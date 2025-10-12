@@ -1,0 +1,18 @@
+.compare-wrap{min-height:100dvh;width:100%;}
+.compare-main{padding:0 1rem}
+.compare-hero{margin-bottom:1rem}
+.compare-title{font-size:2rem;font-weight:700}
+.compare-sub{color:rgba(255,255,255,.6);margin-top:.25rem}
+.compare-actions{margin-top:.75rem}
+.compare-search{width:100%;max-width:28rem;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.1);color:#fff;border-radius:.5rem;padding:.5rem .75rem;font-size:.875rem;placeholder:rgba(255,255,255,.6)}
+.compare-grid{display:grid;grid-template-columns:1fr 3fr;gap:1rem}
+.compare-list{border:1px solid rgba(255,255,255,.2);border-radius:.5rem;background:rgba(255,255,255,.1);overflow:hidden}
+.compare-list button{display:block;width:100%;text-align:left;padding:.5rem .75rem;font-size:.875rem;border-bottom:1px solid rgba(255,255,255,.1);color:#fff}
+.compare-list button:hover{background:rgba(255,255,255,.1)}
+.compare-list .is-active{background:rgba(255,255,255,.1)}
+.compare-table{border:1px solid rgba(255,255,255,.2);border-radius:.5rem;background:rgba(255,255,255,.1);overflow:hidden}
+.compare-table table{width:100%;font-size:.875rem;border-collapse:collapse}
+.compare-table thead{background:rgba(255,255,255,.1)}
+.compare-table th,.compare-table td{padding:.5rem .75rem;border-top:1px solid rgba(255,255,255,.1);color:#fff}
+.compare-field{width:12rem}
+
