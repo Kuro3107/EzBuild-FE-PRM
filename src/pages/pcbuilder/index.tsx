@@ -209,7 +209,7 @@ function PCBuilderPage() {
         console.log('🚀 Loading all products in single API call...')
         
         // Single API call to get all products
-        const response = await fetch(`${import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8080'}/api/product`, {
+        const response = await fetch(`${import.meta.env?.VITE_API_BASE_URL || 'https://prm-backend-2.onrender.com'}/api/product`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         })

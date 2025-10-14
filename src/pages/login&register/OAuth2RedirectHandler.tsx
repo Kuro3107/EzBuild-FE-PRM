@@ -22,7 +22,7 @@ function OAuth2RedirectHandler() {
         console.log('Current URL:', window.location.href)
         console.log('Search params:', window.location.search)
         console.log('Current origin:', window.location.origin)
-        console.log('Expected redirect URL from backend: http://localhost:5173/oauth2/redirect')
+        console.log('Expected redirect URL from backend: https://prm-backend-2.onrender.com/oauth2/redirect')
         
         const params = new URLSearchParams(window.location.search)
         const token = params.get("token") || params.get("access_token") || params.get("accessToken")
@@ -56,7 +56,7 @@ function OAuth2RedirectHandler() {
           console.log('Received authorization code, exchanging for token...')
           try {
             // Gọi API để exchange authorization code thành token
-            const response = await fetch(`http://localhost:8080/oauth2/token`, {
+            const response = await fetch(`https://prm-backend-2.onrender.com/oauth2/token`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
