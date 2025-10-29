@@ -165,7 +165,6 @@ function StaffPage() {
           <div>
             <div className="sidebar-group">Navigation</div>
             <Link className="nav-item" to="/">Back to Home</Link>
-            <Link className="nav-item" to="/products">Products</Link>
           </div>
         </aside>
 
@@ -204,7 +203,6 @@ function StaffPage() {
               <div>
                 <div className="sidebar-group">Navigation</div>
                 <Link className="nav-item" to="/" onClick={() => setIsSidebarOpen(false)}>Back to Home</Link>
-                <Link className="nav-item" to="/products" onClick={() => setIsSidebarOpen(false)}>Products</Link>
               </div>
             </aside>
           </>

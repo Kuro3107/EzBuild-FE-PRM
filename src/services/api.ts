@@ -582,9 +582,8 @@ export class ApiService {
     const baseHeaders: HeadersInit = { 'Content-Type': 'application/json' }
     const authHeaders: HeadersInit = token ? { ...baseHeaders, 'Authorization': `Bearer ${token}` } : baseHeaders
 
-    // Ưu tiên endpoint đúng swagger
+    // Endpoint theo swagger
     const primaryPath = '/api/users'
-    const fallbackPaths = ['/api/users', '/api/user']
 
     // Timeout controller (8s)
     const withTimeout = (input: RequestInfo | URL, init: RequestInit = {}, ms = 8000) => {
@@ -594,81 +593,41 @@ export class ApiService {
       return req
     }
 
-    // 1) Thử NO-AUTH trước cho /api/users (tránh 500 do middleware auth)
-    try {
-      const resp = await withTimeout(`${API_BASE_URL}${primaryPath}`, { method: 'GET', headers: baseHeaders, mode: 'cors' })
-      if (resp.ok) {
-        const data = await this.handleResponse<Record<string, unknown>[]>(resp)
-        return Array.isArray(data) ? data : []
-      }
-      try {
-        const errText = await resp.text()
-        console.error('Users API error (no-auth)', { status: resp.status, body: errText })
-      } catch {
-        // ignore
-      }
-      // 2) Nếu bị 401/403, thử lại với AUTH
-      if ([401, 403].includes(resp.status)) {
-        const authResp = await withTimeout(`${API_BASE_URL}${primaryPath}`, { method: 'GET', headers: authHeaders, mode: 'cors' })
-        if (authResp.ok) {
-          const data = await this.handleResponse<Record<string, unknown>[]>(authResp)
-          return Array.isArray(data) ? data : []
-        }
-        try {
-          const errText2 = await authResp.text()
-          console.error('Users API error (auth)', { status: authResp.status, body: errText2 })
-        } catch {
-          // ignore
-        }
-      }
-    } catch {
-      // ignore
+    // Gọi NO-AUTH trước (swagger không yêu cầu auth). Nếu bị 401/403 mới thử AUTH
+    const resp = await withTimeout(`${API_BASE_URL}${primaryPath}`, { method: 'GET', headers: baseHeaders, mode: 'cors' })
+    if (resp.ok) {
+      const data = await this.handleResponse<Record<string, unknown>[]>(resp)
+      return Array.isArray(data) ? data : []
     }
 
-    // 3) Thử các fallback path (no-auth trước, rồi auth)
-    for (const path of fallbackPaths) {
-      try {
-        const r1 = await withTimeout(`${API_BASE_URL}${path}`, { method: 'GET', headers: baseHeaders, mode: 'cors' })
-        if (r1.ok) {
-          const data = await this.handleResponse<Record<string, unknown>[]>(r1)
-          return Array.isArray(data) ? data : []
-        }
-        try {
-          const t1 = await r1.text()
-          console.error('Users fallback API error (no-auth)', { path, status: r1.status, body: t1 })
-        } catch {
-          // ignore
-        }
-        if ([401, 403].includes(r1.status)) {
-          const r2 = await withTimeout(`${API_BASE_URL}${path}`, { method: 'GET', headers: authHeaders, mode: 'cors' })
-          if (r2.ok) {
-            const data = await this.handleResponse<Record<string, unknown>[]>(r2)
-            return Array.isArray(data) ? data : []
-          }
-          try {
-            const t2 = await r2.text()
-            console.error('Users fallback API error (auth)', { path, status: r2.status, body: t2 })
-          } catch {
-            // ignore
-          }
-        }
-      } catch {
-        // ignore
+    if ([401, 403].includes(resp.status)) {
+      const authResp = await withTimeout(`${API_BASE_URL}${primaryPath}`, { method: 'GET', headers: authHeaders, mode: 'cors' })
+      if (authResp.ok) {
+        const data = await this.handleResponse<Record<string, unknown>[]>(authResp)
+        return Array.isArray(data) ? data : []
       }
+      const body = await authResp.text().catch(() => '')
+      console.error('Users API failed (auth retry)', { status: authResp.status, body })
+      throw new Error(`Users API failed with status ${authResp.status}`)
     }
-    return []
+
+    const body = await resp.text().catch(() => '')
+    console.error('Users API failed (no-auth)', { status: resp.status, body })
+    throw new Error(`Users API failed with status ${resp.status}`)
   }
 
   static async createUser(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
     const token = localStorage.getItem('authToken')
     const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }
-    const response = await fetch(`${API_BASE_URL}/api/user`, { method: 'POST', headers, body: JSON.stringify(payload) })
+    // Theo swagger chỉ có /api/user/register
+    const response = await fetch(`${API_BASE_URL}/api/user/register`, { method: 'POST', headers, body: JSON.stringify(payload) })
     return this.handleResponse<Record<string, unknown>>(response)
   }
 
   static async updateUser(userId: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
     const token = localStorage.getItem('authToken')
     const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }
+    // Theo swagger: /api/user/{userId}
     const response = await fetch(`${API_BASE_URL}/api/user/${userId}`, { method: 'PUT', headers, body: JSON.stringify(payload) })
     return this.handleResponse<Record<string, unknown>>(response)
   }
