@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
+import Modal from '../../components/Modal'
+import ConfirmModal from '../../components/ConfirmModal'
 import { ApiService } from '../../services/api'
 import '../../Homepage.css'
 
@@ -393,23 +395,8 @@ function StaffProductsPage() {
       </div>
 
       {/* Add Product Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Thêm sản phẩm mới</h3>
-              <button
-                onClick={() => {
-                  setIsAddModalOpen(false)
-                  resetForm()
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="space-y-4">
+      <Modal isOpen={isAddModalOpen} title="Thêm sản phẩm mới" onClose={() => { setIsAddModalOpen(false); resetForm() }} variant="dark">
+        <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm *</label>
                 <input
@@ -516,47 +503,16 @@ function StaffProductsPage() {
                 </div>
               </div>
               
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleAddProduct}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                >
-                  Thêm sản phẩm
-                </button>
-                <button
-                  onClick={() => {
-                    setIsAddModalOpen(false)
-                    resetForm()
-                  }}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                >
-                  Hủy
-                </button>
-              </div>
-            </div>
+          <div className="flex gap-3 pt-4">
+            <button onClick={handleAddProduct} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">Thêm sản phẩm</button>
+            <button onClick={() => { setIsAddModalOpen(false); resetForm() }} className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Hủy</button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Edit Product Modal */}
-      {isEditModalOpen && selectedProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Sửa sản phẩm #{selectedProduct.id}</h3>
-              <button
-                onClick={() => {
-                  setIsEditModalOpen(false)
-                  setSelectedProduct(null)
-                  resetForm()
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <div className="space-y-4">
+      <Modal isOpen={!!isEditModalOpen && !!selectedProduct} title={selectedProduct ? `Sửa sản phẩm #${selectedProduct.id}` : 'Sửa sản phẩm'} onClose={() => { setIsEditModalOpen(false); setSelectedProduct(null); resetForm() }} variant="dark">
+        <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Tên sản phẩm *</label>
                 <input
@@ -663,70 +619,23 @@ function StaffProductsPage() {
                 </div>
               </div>
               
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={handleEditProduct}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Cập nhật
-                </button>
-                <button
-                  onClick={() => {
-                    setIsEditModalOpen(false)
-                    setSelectedProduct(null)
-                    resetForm()
-                  }}
-                  className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                >
-                  Hủy
-                </button>
-              </div>
-            </div>
+          <div className="flex gap-3 pt-4">
+            <button onClick={handleEditProduct} className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Cập nhật</button>
+            <button onClick={() => { setIsEditModalOpen(false); setSelectedProduct(null); resetForm() }} className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400">Hủy</button>
           </div>
         </div>
-      )}
+      </Modal>
 
       {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && selectedProduct && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Xác nhận xóa</h3>
-              <button
-                onClick={() => {
-                  setIsDeleteModalOpen(false)
-                  setSelectedProduct(null)
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <p className="text-gray-700 mb-6">
-              Bạn có chắc chắn muốn xóa sản phẩm <strong>{selectedProduct.name}</strong> không?
-            </p>
-            
-            <div className="flex gap-3">
-              <button
-                onClick={handleDeleteProduct}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-              >
-                Xóa
-              </button>
-              <button
-                onClick={() => {
-                  setIsDeleteModalOpen(false)
-                  setSelectedProduct(null)
-                }}
-                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-              >
-                Hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={!!isDeleteModalOpen && !!selectedProduct}
+        title="Xác nhận xóa"
+        message={selectedProduct ? `Bạn có chắc chắn muốn xóa sản phẩm ${selectedProduct.name} không?` : 'Bạn có chắc chắn muốn xóa?'}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        onConfirm={handleDeleteProduct}
+        onCancel={() => { setIsDeleteModalOpen(false); setSelectedProduct(null) }}
+      />
     </div>
   )
 }

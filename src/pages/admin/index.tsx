@@ -158,10 +158,8 @@ function AdminPage() {
 
           <div>
             <div className="sidebar-group">Admin Management</div>
-            <Link className="nav-item" to="/admin/dashboard">Admin Dashboard</Link>
+            <Link className="nav-item" to="/admin/products">Product Management</Link>
             <Link className="nav-item" to="/admin/users">User Management</Link>
-            <Link className="nav-item" to="/admin/ai">AI Management</Link>
-            <Link className="nav-item" to="/admin/staff">Staff Management</Link>
           </div>
 
           <div>
@@ -193,10 +191,8 @@ function AdminPage() {
 
               <div>
                 <div className="sidebar-group">Admin Management</div>
-                <Link className="nav-item" to="/admin/dashboard" onClick={() => setIsSidebarOpen(false)}>Admin Dashboard</Link>
+                <Link className="nav-item" to="/admin/products" onClick={() => setIsSidebarOpen(false)}>Product Management</Link>
                 <Link className="nav-item" to="/admin/users" onClick={() => setIsSidebarOpen(false)}>User Management</Link>
-                <Link className="nav-item" to="/admin/ai" onClick={() => setIsSidebarOpen(false)}>AI Management</Link>
-                <Link className="nav-item" to="/admin/staff" onClick={() => setIsSidebarOpen(false)}>Staff Management</Link>
               </div>
 
               <div>
@@ -218,17 +214,15 @@ function AdminPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-white rounded-lg border border-black/10 p-6 hover:shadow-md transition-shadow">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7h18M3 12h18M3 17h18" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold">Admin Dashboard</h3>
+                <h3 className="text-xl font-semibold">Product Management</h3>
               </div>
-              <p className="text-gray-600 mb-4">Tổng quan hệ thống, thống kê toàn diện và giám sát hoạt động</p>
-              <Link to="/admin/dashboard" className="text-blue-600 text-sm font-medium hover:underline">
-                Truy cập Dashboard →
-              </Link>
+              <p className="text-gray-600 mb-4">Quản lý sản phẩm giống trang Staff</p>
+              <Link to="/admin/products" className="text-blue-600 text-sm font-medium hover:underline">Quản lý Products →</Link>
             </div>
 
             <div className="bg-white rounded-lg border border-black/10 p-6 hover:shadow-md transition-shadow">
@@ -241,39 +235,7 @@ function AdminPage() {
                 <h3 className="text-xl font-semibold">User Management</h3>
               </div>
               <p className="text-gray-600 mb-4">Quản lý người dùng, phân quyền và kiểm soát truy cập</p>
-              <Link to="/admin/users" className="text-blue-600 text-sm font-medium hover:underline">
-                Quản lý Users →
-              </Link>
-            </div>
-
-            <div className="bg-white rounded-lg border border-black/10 p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold">AI Management</h3>
-              </div>
-              <p className="text-gray-600 mb-4">Quản lý AI, machine learning và tự động hóa hệ thống</p>
-              <Link to="/admin/ai" className="text-blue-600 text-sm font-medium hover:underline">
-                Cấu hình AI →
-              </Link>
-            </div>
-
-            <div className="bg-white rounded-lg border border-black/10 p-6 hover:shadow-md transition-shadow">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-semibold">Staff Management</h3>
-              </div>
-              <p className="text-gray-600 mb-4">Quản lý nhân viên, phân quyền và giám sát hoạt động</p>
-              <Link to="/admin/staff" className="text-blue-600 text-sm font-medium hover:underline">
-                Quản lý Staff →
-              </Link>
+              <Link to="/admin/users" className="text-blue-600 text-sm font-medium hover:underline">Quản lý Users →</Link>
             </div>
           </div>
         </main>

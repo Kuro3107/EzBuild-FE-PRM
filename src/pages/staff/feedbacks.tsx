@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ConfirmModal from '../../components/ConfirmModal'
 import { ApiService } from '../../services/api'
 import '../../Homepage.css'
 
@@ -26,6 +27,12 @@ function StaffFeedbacksPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'orders' | 'services'>('orders')
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{
+    type: 'order' | 'service'
+    id: number
+    title?: string
+  } | null>(null)
 
   useEffect(() => {
     loadData()
@@ -50,10 +57,11 @@ function StaffFeedbacksPage() {
   }
 
   const handleDeleteOrderFeedback = async (id: number) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa feedback này?')) return
     try {
       await ApiService.deleteOrderFeedback(id)
       alert('Đã xóa feedback thành công!')
+      setIsDeleteModalOpen(false)
+      setDeleteTarget(null)
       loadData()
     } catch (err) {
       console.error('Error deleting feedback:', err)
@@ -62,15 +70,21 @@ function StaffFeedbacksPage() {
   }
 
   const handleDeleteServiceFeedback = async (id: number) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa feedback này?')) return
     try {
       await ApiService.deleteServiceFeedback(id)
       alert('Đã xóa feedback thành công!')
+      setIsDeleteModalOpen(false)
+      setDeleteTarget(null)
       loadData()
     } catch (err) {
       console.error('Error deleting feedback:', err)
       alert('Có lỗi khi xóa feedback')
     }
+  }
+
+  const openDeleteModal = (target: { type: 'order' | 'service'; id: number; title?: string }) => {
+    setDeleteTarget(target)
+    setIsDeleteModalOpen(true)
   }
 
   const getRatingColor = (rating: number) => {
@@ -207,7 +221,7 @@ function StaffFeedbacksPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
-                          onClick={() => handleDeleteOrderFeedback(feedback.id)}
+                          onClick={() => openDeleteModal({ type: 'order', id: feedback.id, title: `Order #${feedback.orderId}` })}
                           className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium border border-red-300"
                         >
                           Xóa
@@ -265,7 +279,7 @@ function StaffFeedbacksPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
-                          onClick={() => handleDeleteServiceFeedback(feedback.id)}
+                          onClick={() => openDeleteModal({ type: 'service', id: feedback.id, title: `Service #${feedback.serviceId}` })}
                           className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 font-medium border border-red-300"
                         >
                           Xóa
@@ -278,6 +292,21 @@ function StaffFeedbacksPage() {
             </table>
           </div>
         </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && deleteTarget && (
+        <ConfirmModal
+          isOpen={isDeleteModalOpen}
+          title="Xác nhận xóa"
+          message={`Bạn có chắc chắn muốn xóa feedback${deleteTarget.title ? ` của ${deleteTarget.title}` : ''} không?`}
+          confirmText="Xóa"
+          cancelText="Hủy"
+          onConfirm={() => deleteTarget.type === 'order' ? handleDeleteOrderFeedback(deleteTarget.id) : handleDeleteServiceFeedback(deleteTarget.id)}
+          onCancel={() => {
+            setIsDeleteModalOpen(false)
+            setDeleteTarget(null)
+          }}
+        />
       )}
     </div>
   )
