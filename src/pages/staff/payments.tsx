@@ -3,6 +3,7 @@ import '../../Homepage.css'
 
 function StaffPaymentsPage() {
   const [loading] = useState(false)
+  const [error] = useState<string | null>(null)
 
   // Payment API không tồn tại trong backend
   // Trang này đã bị vô hiệu hóa
