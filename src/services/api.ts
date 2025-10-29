@@ -952,6 +952,27 @@ export class ApiService {
     }
   }
 
+  // Payments (lightweight - backend may or may not support)
+  static async createPayment(payload: { orderId: number; amount: number; method: string; status?: string }): Promise<Record<string, unknown>> {
+    const response = await fetch(`${API_BASE_URL}/api/payment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async deletePayment(paymentId: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/payment/${paymentId}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData?.message || 'Không thể xóa payment')
+    }
+  }
+
   
 
   // Utility functions để làm việc với token

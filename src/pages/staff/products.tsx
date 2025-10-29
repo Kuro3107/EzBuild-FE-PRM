@@ -77,8 +77,8 @@ function StaffProductsPage() {
       console.log('Products sample:', productsData.slice(0, 3))
       console.log('Categories:', categoriesData)
       
-      setProducts(productsData as Product[])
-      setCategories(categoriesData as Category[])
+      setProducts(productsData as unknown as Product[])
+      setCategories(categoriesData as unknown as Category[])
     } catch (err) {
       setError('Không thể tải dữ liệu')
       console.error('Error loading data:', err)

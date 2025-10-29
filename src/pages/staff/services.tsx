@@ -45,7 +45,7 @@ function StaffServicesPage() {
       setLoading(true)
       setError(null)
       const servicesData = await ApiService.getAllServices()
-      setServices(servicesData as Service[])
+      setServices(servicesData as unknown as Service[])
     } catch (err) {
       setError('Không thể tải dữ liệu')
       console.error('Error loading data:', err)

@@ -46,8 +46,8 @@ function StaffFeedbacksPage() {
         ApiService.getAllOrderFeedbacks(),
         ApiService.getAllServiceFeedbacks()
       ])
-      setOrderFeedbacks(orderData as OrderFeedback[])
-      setServiceFeedbacks(serviceData as ServiceFeedback[])
+      setOrderFeedbacks(orderData as unknown as OrderFeedback[])
+      setServiceFeedbacks(serviceData as unknown as ServiceFeedback[])
     } catch (err) {
       setError('Không thể tải dữ liệu')
       console.error('Error loading data:', err)

@@ -49,7 +49,7 @@ function StaffGamesPage() {
       setLoading(true)
       setError(null)
       const gamesData = await ApiService.getAllGames()
-      setGames(gamesData as Game[])
+      setGames(gamesData as unknown as Game[])
     } catch (err) {
       setError('Không thể tải dữ liệu')
       console.error('Error loading data:', err)

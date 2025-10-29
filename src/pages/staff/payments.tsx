@@ -1,28 +1,8 @@
-import { useEffect, useState } from 'react'
-import { ApiService } from '../../services/api'
+import { useState } from 'react'
 import '../../Homepage.css'
 
-interface Payment {
-  id: number
-  orderId: number
-  amount: number
-  method: string
-  status: string
-  createdAt: string
-  paidAt?: string
-  transactionId?: string
-}
-
-interface Order {
-  id: number
-  status: string
-  totalPrice: number
-  user?: { id: number; email: string; fullname: string }
-}
-
 function StaffPaymentsPage() {
-  const [loading, setLoading] = useState(false)
-  const [error] = useState<string | null>(null)
+  const [loading] = useState(false)
 
   // Payment API không tồn tại trong backend
   // Trang này đã bị vô hiệu hóa
