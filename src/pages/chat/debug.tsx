@@ -2,8 +2,13 @@ import { useState, useEffect } from 'react'
 import { ApiService } from '../../services/api'
 import { chatService } from '../../services/chat'
 
+interface CurrentUser {
+  userId: number
+  [key: string]: unknown
+}
+
 function ChatDebugPage() {
-  const [userInfo, setUserInfo] = useState<any>(null)
+  const [userInfo, setUserInfo] = useState<CurrentUser | null>(null)
   const [wsStatus, setWsStatus] = useState<string>('Chưa kết nối')
   const [testMessage, setTestMessage] = useState('')
   const [logs, setLogs] = useState<string[]>([])
@@ -15,9 +20,9 @@ function ChatDebugPage() {
 
   useEffect(() => {
     // Kiểm tra user info
-    const user = ApiService.getCurrentUser()
-    setUserInfo(user)
-    addLog(`User info: ${JSON.stringify(user)}`)
+    const user = ApiService.getCurrentUser() as unknown as CurrentUser | null
+    setUserInfo(user ?? null)
+    addLog(`User info: ${JSON.stringify(user ?? {})}`)
 
     // Kiểm tra localStorage
     const token = localStorage.getItem('authToken')
@@ -30,9 +35,10 @@ function ChatDebugPage() {
     const API_BASE = (import.meta.env?.VITE_API_BASE_URL || '').trim()
     addLog(`API Base: ${API_BASE}`)
     
-    if (user && user.userId) {
-      addLog(`Attempting WebSocket connection for user: ${user.userId}`)
-      chatService.connect(API_BASE, user.userId, (msg) => {
+    if (user && (user as CurrentUser).userId != null) {
+      const userIdNum = Number((user as CurrentUser).userId)
+      addLog(`Attempting WebSocket connection for user: ${userIdNum}`)
+      chatService.connect(API_BASE, userIdNum, (msg) => {
         addLog(`Received message: ${JSON.stringify(msg)}`)
       })
       setWsStatus('Đã kết nối')
@@ -43,14 +49,15 @@ function ChatDebugPage() {
   }, [])
 
   const testSendMessage = () => {
-    if (!userInfo || !userInfo.userId) {
+    if (!userInfo || userInfo.userId == null) {
       addLog('Không thể gửi tin nhắn - thiếu user ID')
       return
     }
 
     addLog(`Sending test message: ${testMessage}`)
-    chatService.send(userInfo.userId, {
-      senderId: userInfo.userId,
+    const userIdNum = Number(userInfo.userId)
+    chatService.send(userIdNum, {
+      senderId: userIdNum,
       receiverId: 0,
       content: testMessage,
       senderRole: 'USER',

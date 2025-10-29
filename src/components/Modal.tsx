@@ -1,4 +1,5 @@
-import { ReactNode, useEffect } from 'react'
+import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 
 interface ModalProps {
@@ -28,7 +29,7 @@ function Modal({ isOpen, title, onClose, children, footer, maxWidthClassName = '
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="absolute inset-0 flex items-center justify-center p-5">
         <div className={`${variant === 'dark' ? 'bg-gray-900 border border-white/20 text-white' : 'bg-white text-gray-900'} rounded-lg w-full ${maxWidthClassName} max-h-[90vh] overflow-y-auto shadow-2xl`}> 
-          {(title || onClose) && (
+          {title && (
             <div className="flex justify-between items-center p-6 pb-0">
               <h3 className="text-xl font-semibold">{title}</h3>
               <button onClick={onClose} className={`${variant === 'dark' ? 'text-white/70 hover:text-white' : 'text-gray-400 hover:text-gray-600'}`}>✕</button>
