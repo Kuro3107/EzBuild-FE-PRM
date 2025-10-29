@@ -1,4 +1,6 @@
 // Dùng proxy của Vite trong dev: để trống khi không cấu hình env
+// Dùng relative '/api' để đi qua Vite proxy trong môi trường dev (tránh CORS)
+// Có thể cấu hình VITE_API_BASE_URL ở production nếu cần domain tuyệt đối
 const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL ?? '').trim()
 
 export interface LoginRequest {
@@ -35,6 +37,13 @@ export interface ApiError {
 }
 
 export class ApiService {
+  // Generic timeout wrapper for fetch
+  private static withTimeout(input: RequestInfo | URL, init: RequestInit = {}, ms = 8000) {
+    const controller = new AbortController()
+    const id = setTimeout(() => controller.abort(), ms)
+    const req = fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(id))
+    return req
+  }
   private static async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       let errorData = {}
@@ -567,6 +576,103 @@ export class ApiService {
     }
   }
 
+  // Admin - Users CRUD
+  static async getAllUsers(): Promise<Record<string, unknown>[]> {
+    const token = localStorage.getItem('authToken')
+    const baseHeaders: HeadersInit = { 'Content-Type': 'application/json' }
+    const authHeaders: HeadersInit = token ? { ...baseHeaders, 'Authorization': `Bearer ${token}` } : baseHeaders
+
+    // Ưu tiên endpoint đúng swagger
+    const primaryPath = '/api/users'
+    const fallbackPaths = ['/api/users', '/api/user']
+
+    // Timeout controller (8s)
+    const withTimeout = (input: RequestInfo | URL, init: RequestInit = {}, ms = 8000) => {
+      const controller = new AbortController()
+      const id = setTimeout(() => controller.abort(), ms)
+      const req = fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(id))
+      return req
+    }
+
+    // 1) Thử NO-AUTH trước cho /api/users (tránh 500 do middleware auth)
+    try {
+      const resp = await withTimeout(`${API_BASE_URL}${primaryPath}`, { method: 'GET', headers: baseHeaders, mode: 'cors' })
+      if (resp.ok) {
+        const data = await this.handleResponse<Record<string, unknown>[]>(resp)
+        return Array.isArray(data) ? data : []
+      }
+      try {
+        const errText = await resp.text()
+        console.error('Users API error (no-auth)', { status: resp.status, body: errText })
+      } catch {
+        // ignore
+      }
+      // 2) Nếu bị 401/403, thử lại với AUTH
+      if ([401, 403].includes(resp.status)) {
+        const authResp = await withTimeout(`${API_BASE_URL}${primaryPath}`, { method: 'GET', headers: authHeaders, mode: 'cors' })
+        if (authResp.ok) {
+          const data = await this.handleResponse<Record<string, unknown>[]>(authResp)
+          return Array.isArray(data) ? data : []
+        }
+        try {
+          const errText2 = await authResp.text()
+          console.error('Users API error (auth)', { status: authResp.status, body: errText2 })
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // 3) Thử các fallback path (no-auth trước, rồi auth)
+    for (const path of fallbackPaths) {
+      try {
+        const r1 = await withTimeout(`${API_BASE_URL}${path}`, { method: 'GET', headers: baseHeaders, mode: 'cors' })
+        if (r1.ok) {
+          const data = await this.handleResponse<Record<string, unknown>[]>(r1)
+          return Array.isArray(data) ? data : []
+        }
+        try {
+          const t1 = await r1.text()
+          console.error('Users fallback API error (no-auth)', { path, status: r1.status, body: t1 })
+        } catch {
+          // ignore
+        }
+        if ([401, 403].includes(r1.status)) {
+          const r2 = await withTimeout(`${API_BASE_URL}${path}`, { method: 'GET', headers: authHeaders, mode: 'cors' })
+          if (r2.ok) {
+            const data = await this.handleResponse<Record<string, unknown>[]>(r2)
+            return Array.isArray(data) ? data : []
+          }
+          try {
+            const t2 = await r2.text()
+            console.error('Users fallback API error (auth)', { path, status: r2.status, body: t2 })
+          } catch {
+            // ignore
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return []
+  }
+
+  static async createUser(payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const token = localStorage.getItem('authToken')
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }
+    const response = await fetch(`${API_BASE_URL}/api/user`, { method: 'POST', headers, body: JSON.stringify(payload) })
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async updateUser(userId: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const token = localStorage.getItem('authToken')
+    const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' }
+    const response = await fetch(`${API_BASE_URL}/api/user/${userId}`, { method: 'PUT', headers, body: JSON.stringify(payload) })
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
   static async getHomeData(): Promise<Record<string, unknown>> {
     const token = localStorage.getItem('authToken')
     if (!token) {
@@ -589,59 +695,89 @@ export class ApiService {
     try {
       // Thử nhiều cách để lấy tất cả products
       let allProducts: Record<string, unknown>[] = []
+      const tryFetch = async (url: string, label: string) => {
+        try {
+          const response = await this.withTimeout(url, {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' },
+          }, 25000)
+          if (response.ok) {
+            const data = await this.handleResponse<Record<string, unknown>[]>(response)
+            console.log(`${label}:`, data.length, 'products')
+            return data
+          } else {
+            const text = await response.text().catch(() => '')
+            console.warn(`${label} failed ${response.status}`, text)
+            return []
+          }
+        } catch (err) {
+          console.warn(`${label} error:`, err)
+          return []
+        }
+      }
       
       // Thử 1: API bình thường
       try {
-        const response = await fetch(`${API_BASE_URL}/api/product`, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        })
-        if (response.ok) {
-          allProducts = await this.handleResponse<Record<string, unknown>[]>(response)
-          console.log('API bình thường:', allProducts.length, 'products')
+        const data = await tryFetch(`${API_BASE_URL}/api/product`, 'API bình thường')
+        if (data.length > 0) {
+          allProducts = data
+          
+          // Log cấu trúc productPrice đầu tiên để debug
+          if (allProducts.length > 0) {
+            // Tìm product có Ryzen 9 để debug
+            const ryzen9Product = allProducts.find((p: Record<string, unknown>) => 
+              String(p.name || '').includes('Ryzen 9')
+            ) as Record<string, unknown> | undefined
+            
+            if (ryzen9Product) {
+              console.log('📦 Ryzen 9 product found from API:', {
+                name: ryzen9Product.name,
+                id: ryzen9Product.id
+              })
+              
+              const firstPrices = ryzen9Product.productPrices as Array<Record<string, unknown>> | undefined
+              if (firstPrices && firstPrices.length > 0) {
+                console.log('📦 Sample productPrice structure from API:', firstPrices[0])
+                console.log('📦 ProductPrice keys from API:', Object.keys(firstPrices[0]))
+                console.log('📦 ProductPrice full JSON:', JSON.stringify(firstPrices[0], null, 2))
+              } else {
+                console.warn('⚠️ No productPrices found in Ryzen 9 product')
+              }
+            }
+          }
         }
-      } catch (err) {
-        console.log('API bình thường lỗi:', err)
-      }
+       } catch (err) {
+         console.log('API bình thường lỗi:', err)
+       }
       
       // Thử 2: API với limit cao
       const limitParams = ['limit=1000', 'limit=9999', 'size=1000', 'size=9999']
       for (const param of limitParams) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/api/product?${param}`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-          })
-          if (response.ok) {
-            const products = await this.handleResponse<Record<string, unknown>[]>(response)
-            if (products.length > allProducts.length) {
-              allProducts = products
-              console.log(`API với ${param}:`, allProducts.length, 'products')
-            }
-          }
-        } catch (err) {
-          console.log(`API với ${param} lỗi:`, err)
+        const products = await tryFetch(`${API_BASE_URL}/api/product?${param}`, `API với ${param}`)
+        if (products.length > allProducts.length) {
+          allProducts = products
         }
       }
       
       // Thử 3: API với page=all hoặc page=0
-      const pageParams = ['page=all', 'page=0', 'page=1&size=1000', 'offset=0&limit=1000']
+      const pageParams = ['page=all', 'page=0', 'page=1&size=500', 'page=1&size=200', 'offset=0&limit=500']
       for (const param of pageParams) {
-        try {
-          const response = await fetch(`${API_BASE_URL}/api/product?${param}`, {
-            method: 'GET',
-            headers: { 'Content-Type': 'application/json' },
-          })
-          if (response.ok) {
-            const products = await this.handleResponse<Record<string, unknown>[]>(response)
-            if (products.length > allProducts.length) {
-              allProducts = products
-              console.log(`API với ${param}:`, allProducts.length, 'products')
-            }
-          }
-        } catch (err) {
-          console.log(`API với ${param} lỗi:`, err)
+        const products = await tryFetch(`${API_BASE_URL}/api/product?${param}`, `API với ${param}`)
+        if (products.length > allProducts.length) {
+          allProducts = products
         }
+      }
+
+      // Thử 4: tải theo trang (1..5) size=200 nếu vẫn rỗng
+      if (allProducts.length === 0) {
+        let merged: Record<string, unknown>[] = []
+        for (let page = 1; page <= 5; page++) {
+          const chunk = await tryFetch(`${API_BASE_URL}/api/product?page=${page}&size=200`, `API page=${page}&size=200`)
+          if (chunk.length === 0) break
+          merged = merged.concat(chunk)
+          if (chunk.length < 200) break
+        }
+        if (merged.length > 0) allProducts = merged
       }
 
       console.log('=== KẾT QUẢ CUỐI CÙNG ===')
@@ -1632,9 +1768,26 @@ export class ApiService {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
-      return await this.handleResponse<Record<string, unknown>[]>(response)
+      const data = await this.handleResponse<Record<string, unknown>>(response)
+      
+      // API trả về object với structure: { id, name, website, products: [...] }
+      // Cần extract products array
+      if (data && typeof data === 'object') {
+        const products = (data as Record<string, unknown>).products
+        if (Array.isArray(products)) {
+          console.log(`📦 Supplier ${supplierId} has ${products.length} products`)
+          if (products.length > 0) {
+            console.log(`📦 Sample product from supplier ${supplierId}:`, products[0])
+          }
+          return products as Record<string, unknown>[]
+        }
+      }
+      
+      // Fallback: nếu structure khác, trả về data như array
+      console.warn(`⚠️ Unexpected structure for supplier ${supplierId} products:`, data)
+      return Array.isArray(data) ? data : []
     } catch (error) {
-      console.error('Error fetching supplier products:', error)
+      console.error(`Error fetching supplier ${supplierId} products:`, error)
       throw error
     }
   }

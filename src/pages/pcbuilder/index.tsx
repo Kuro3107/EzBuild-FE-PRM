@@ -30,15 +30,19 @@ interface ApiProduct {
   createdAt?: string
   productModels?: unknown[]
   productPrices?: Array<{
-    id: number
-    supplier: {
-      id: number
-      name: string
-      website: string
+    id?: number
+    supplier?: {
+      id?: number
+      name?: string
+      website?: string
     }
+    supplier_id?: number
+    supplierId?: number
     price: number
-    supplierLink: string
-    updatedAt: string
+    supplierLink?: string
+    supplier_link?: string
+    updatedAt?: string
+    updated_at?: string
   }>
 }
 
@@ -1243,12 +1247,28 @@ function PCBuilderPage() {
               // Lấy giá từ productPrices (tính min-max range)
               const productPrices = (item.productPrices as Array<Record<string, unknown>>) || []
               
-              // Debug: Log sample product with prices
+              // Debug: Log sample product with prices - kiểm tra TẤT CẢ các fields
               if (item.name?.includes('Ryzen 9')) {
                 console.log('🔍 Sample product data:', item.name)
                 console.log('🔍 productPrices:', productPrices)
+                console.log('🔍 Full item data:', JSON.stringify(item, null, 2))
                 if (productPrices.length > 0) {
                   console.log('🔍 First price data:', productPrices[0])
+                  console.log('🔍 First price keys:', Object.keys(productPrices[0]))
+                  console.log('🔍 First price full:', JSON.stringify(productPrices[0], null, 2))
+                  
+                  // Kiểm tra TẤT CẢ các khả năng của supplier ID
+                  const pp = productPrices[0] as Record<string, unknown>
+                  console.log('🔍 Checking all possible supplier fields:')
+                  console.log('  - pp.supplier:', pp.supplier)
+                  console.log('  - pp.supplier_id:', pp.supplier_id)
+                  console.log('  - pp.supplierId:', pp.supplierId)
+                  console.log('  - pp.supplierId:', pp['supplierId'])
+                  console.log('  - pp["supplier_id"]:', pp['supplier_id'])
+                  console.log('  - pp["supplierId"]:', pp['supplierId'])
+                  console.log('  - All keys:', Object.keys(pp))
+                  console.log('  - HasOwnProperty supplier_id:', Object.prototype.hasOwnProperty.call(pp, 'supplier_id'))
+                  console.log('  - HasOwnProperty supplierId:', Object.prototype.hasOwnProperty.call(pp, 'supplierId'))
                 }
               }
               
@@ -1276,25 +1296,94 @@ function PCBuilderPage() {
         type: item.type,
         createdAt: item.createdAt,
                 productPrices: productPrices.map(pp => {
-                  // Get supplier ID from various possible fields
+                  // Lấy supplier ID từ nhiều nguồn khác nhau
                   const supplierObj = pp.supplier as Record<string, unknown> | undefined
-                  const supplierId = Number(supplierObj?.id || pp.supplier_id || pp.supplierId || 0)
                   
-                  // Try to get supplier info from map first, then from nested object
+                  // Kiểm tra TẤT CẢ các khả năng của supplier ID
+                  let supplierId = 0
+                  
+                  // Thử các field names khác nhau - kiểm tra kỹ từng trường hợp
+                  if (pp.supplier_id !== undefined && pp.supplier_id !== null) {
+                    supplierId = Number(pp.supplier_id)
+                  } else if (pp.supplierId !== undefined && pp.supplierId !== null) {
+                    supplierId = Number(pp.supplierId)
+                  } else if (pp['supplier_id'] !== undefined && pp['supplier_id'] !== null) {
+                    supplierId = Number(pp['supplier_id'])
+                  } else if (pp['supplierId'] !== undefined && pp['supplierId'] !== null) {
+                    supplierId = Number(pp['supplierId'])
+                  } else if (supplierObj) {
+                    // Nếu có supplier object, lấy ID từ object đó
+                    if (supplierObj.id !== undefined && supplierObj.id !== null) {
+                      supplierId = Number(supplierObj.id)
+                    } else if (supplierObj.supplierId !== undefined && supplierObj.supplierId !== null) {
+                      supplierId = Number(supplierObj.supplierId)
+                    } else if (supplierObj.Id !== undefined && supplierObj.Id !== null) {
+                      supplierId = Number(supplierObj.Id)
+                    } else if (supplierObj.SupplierId !== undefined && supplierObj.SupplierId !== null) {
+                      supplierId = Number(supplierObj.SupplierId)
+                    }
+                  }
+                  
+                  // Lấy thông tin supplier từ map (nếu có supplier_id)
                   let supplierData: Record<string, unknown> | null = null
                   if (suppliers && supplierId > 0) {
                     supplierData = suppliers.get(supplierId) || null
                   }
                   
-                  const supplierName = supplierData?.name || supplierObj?.name || pp.supplier_name || pp.supplierName || 'Unknown Supplier'
-                  const supplierWebsite = supplierData?.website || supplierObj?.website || ''
+                  // Ưu tiên: Nếu supplier object có đầy đủ thông tin, dùng trực tiếp
+                  // Sau đó lấy từ map, cuối cùng từ các field khác
+                  let finalSupplierName = 'Unknown Supplier'
+                  let finalSupplierWebsite = ''
+                  
+                  if (supplierObj) {
+                    // Nếu supplier object đã có đầy đủ thông tin
+                    const nameFromObj = supplierObj.name as string || supplierObj.Name as string || ''
+                    const websiteFromObj = supplierObj.website as string || supplierObj.Website as string || ''
+                    
+                    if (nameFromObj) {
+                      finalSupplierName = nameFromObj
+                      finalSupplierWebsite = websiteFromObj
+                    }
+                  }
+                  
+                  // Nếu chưa có, lấy từ map
+                  if (finalSupplierName === 'Unknown Supplier' && supplierData) {
+                    finalSupplierName = supplierData.name as string || supplierData.Name as string || finalSupplierName
+                    finalSupplierWebsite = supplierData.website as string || supplierData.Website as string || finalSupplierWebsite
+                  }
+                  
+                  // Cuối cùng, fallback sang các field khác
+                  if (finalSupplierName === 'Unknown Supplier') {
+                    finalSupplierName = 
+                      pp.supplier_name as string || 
+                      pp.supplierName as string || 
+                      'Unknown Supplier'
+                  }
+                  
+                  const supplierName = finalSupplierName
+                  const supplierWebsite = finalSupplierWebsite
                   
                   // Debug supplier data for Ryzen 9
                   if (item.name?.includes('Ryzen 9') && pp) {
                     console.log('🔍 Processing price:', pp)
-                    console.log('🔍 supplierId:', supplierId)
+                    console.log('🔍 All keys in price:', Object.keys(pp))
+                    console.log('🔍 supplier_id:', pp.supplier_id)
+                    console.log('🔍 supplierId:', pp.supplierId)
+                    console.log('🔍 pp["supplier_id"]:', pp['supplier_id'])
+                    console.log('🔍 pp["supplierId"]:', pp['supplierId'])
+                    console.log('🔍 supplierObj:', supplierObj)
+                    console.log('🔍 supplierId (final):', supplierId)
                     console.log('🔍 Found in map:', !!supplierData)
+                    console.log('🔍 supplierData:', supplierData)
+                    if (supplierData) {
+                      console.log('🔍 supplierData keys:', Object.keys(supplierData))
+                      console.log('🔍 supplierData.name:', supplierData.name)
+                      console.log('🔍 supplierData.Name:', supplierData.Name)
+                    }
                     console.log('🔍 supplierName:', supplierName)
+                    if (suppliers) {
+                      console.log('🔍 Available supplier IDs in map:', Array.from(suppliers.keys()))
+                    }
                   }
                   
                   return {
@@ -1305,8 +1394,8 @@ function PCBuilderPage() {
                       website: String(supplierWebsite)
                     },
                     price: Number(pp.price) || 0,
-                    supplierLink: String(pp.supplierLink || ''),
-                    updatedAt: String(pp.updatedAt || '')
+                    supplierLink: String(pp.supplierLink || pp.supplier_link || ''),
+                    updatedAt: String(pp.updatedAt || pp.updated_at || '')
                   }
                 })
               }
@@ -1320,14 +1409,124 @@ function PCBuilderPage() {
       try {
         console.log('🚀 Loading all products in single API call...')
         
+        // Kiểm tra cache trước
+        const cacheKey = 'enriched_products_cache'
+        const cachedData = localStorage.getItem(cacheKey)
+        const cacheAge = 5 * 60 * 1000 // 5 phút
+        
+        if (cachedData) {
+          try {
+            const parsed = JSON.parse(cachedData)
+            const isExpired = Date.now() - parsed.timestamp > cacheAge
+            
+            if (!isExpired && parsed.products && parsed.suppliers) {
+              console.log('⚡ Using cached data for faster loading...')
+              setRawApiProducts(parsed.products)
+              
+              // Tạo suppliers map từ cache
+              const suppliers = new Map<number, Record<string, unknown>>()
+              parsed.suppliers.forEach((supplier: Record<string, unknown>) => {
+                const id = Number(supplier.id)
+                if (id > 0) {
+                  suppliers.set(id, supplier)
+                }
+              })
+              setSuppliersMap(suppliers)
+              
+              // Process products từ cache
+              const allProducts: PCComponent[] = []
+              const counts: { [key: number]: number } = {}
+              
+              // Initialize counts for all categories
+              Object.keys(categoryMap).forEach(categoryId => {
+                counts[Number(categoryId)] = 0
+              })
+
+              // Process each product and categorize
+              parsed.products.forEach((item: Record<string, unknown>) => {
+                const categoryId = Number(item.category_id || (item.category as { id?: number })?.id || 0)
+                if (categoryId > 0 && categoryMap[categoryId]) {
+                  const product = formatDetailedProducts([item], categoryId, suppliers)[0]
+                  if (product) {
+                    allProducts.push(product)
+                    counts[categoryId] = (counts[categoryId] || 0) + 1
+                  }
+                }
+              })
+
+              setProducts(allProducts)
+              setLoading(false)
+              console.log('✅ Successfully loaded from cache')
+              return
+            } else {
+              console.log('🔄 Cache expired, fetching fresh data...')
+            }
+          } catch (err) {
+            console.warn('⚠️ Failed to parse cache, fetching fresh data:', err)
+          }
+        }
+        
         // Fetch products and suppliers in parallel
         const [allApiProducts, allSuppliers] = await Promise.all([
-          ApiService.getAllProducts(),
-          ApiService.getAllSuppliers()
+          Promise.race([
+            ApiService.getAllProducts(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Products API timeout')), 25000)
+            )
+          ]) as Promise<Record<string, unknown>[]>,
+          Promise.race([
+            ApiService.getAllSuppliers(),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Suppliers API timeout')), 15000)
+            )
+          ]) as Promise<Record<string, unknown>[]>
         ])
         
         console.log(`📦 Loaded ${allApiProducts.length} products in 1 API call`)
         console.log(`🏢 Loaded ${allSuppliers.length} suppliers`)
+        
+        // Debug: Kiểm tra cấu trúc productPrice từ API
+        if (allApiProducts.length > 0) {
+          const sampleProduct = allApiProducts.find((p: Record<string, unknown>) => 
+            String(p.name || '').includes('Ryzen 9')
+          ) as Record<string, unknown> | undefined
+          
+          if (sampleProduct) {
+            console.log('📦 Sample product from API:', {
+              name: sampleProduct.name,
+              id: sampleProduct.id,
+              productPrices: sampleProduct.productPrices,
+              productPricesLength: (sampleProduct.productPrices as unknown[])?.length || 0
+            })
+            
+            const prices = sampleProduct.productPrices as Array<Record<string, unknown>> | undefined
+            if (prices && prices.length > 0) {
+              console.log('📦 First productPrice from API:', prices[0])
+              console.log('📦 ProductPrice keys:', Object.keys(prices[0]))
+              console.log('📦 ProductPrice FULL JSON:', JSON.stringify(prices[0], null, 2))
+              
+              // Kiểm tra tất cả các khả năng
+              const pp = prices[0]
+              console.log('📦 Check all fields:')
+              console.log('  - pp.id:', pp.id)
+              console.log('  - pp.price:', pp.price)
+              console.log('  - pp.supplier:', pp.supplier)
+              console.log('  - pp.supplier_id:', pp.supplier_id)
+              console.log('  - pp.supplierId:', pp.supplierId)
+              console.log('  - pp.SupplierId:', pp.SupplierId)
+              console.log('  - pp["supplier_id"]:', pp['supplier_id'])
+              console.log('  - pp["supplierId"]:', pp['supplierId'])
+              
+              // Kiểm tra nested supplier
+              if (pp.supplier) {
+                const supp = pp.supplier as Record<string, unknown>
+                console.log('  - supplier object:', supp)
+                console.log('  - supplier.id:', supp.id)
+                console.log('  - supplier.name:', supp.name)
+              }
+            }
+          }
+        }
 
         // Create suppliers map for quick lookup
         const suppliers = new Map<number, Record<string, unknown>>()
@@ -1339,11 +1538,125 @@ function PCBuilderPage() {
         })
         setSuppliersMap(suppliers)
         
+        // Tạo mapping từ supplier endpoint để có thể map price với supplier
+        // Vì productPrices chỉ có price, cần fetch từ /api/supplier/{id}/products
+        console.log('🔧 Building supplier-product-price mapping...')
+        
+        const supplierProductMap = new Map<number, Map<number, Record<string, unknown>>>()
+        
+        // Tối ưu: Chỉ fetch từ một vài suppliers chính để test trước
+        // Sau đó có thể mở rộng nếu cần
+        try {
+          // Dùng TẤT CẢ suppliers để build mapping chính xác theo yêu cầu
+          const selectedSuppliers = allSuppliers
+          console.log(`🚀 Fetching from ALL ${selectedSuppliers.length} suppliers to build product->supplier map...`)
+          
+          const supplierProductPromises = selectedSuppliers.map(async (supplier: Record<string, unknown>) => {
+            const supplierId = Number(supplier.id)
+            if (supplierId > 0) {
+              try {
+                // Thêm timeout cho mỗi supplier request
+                const supplierProducts = await Promise.race([
+                  ApiService.getSupplierProducts(supplierId),
+                  new Promise<Record<string, unknown>[]>((_, reject) => 
+                    setTimeout(() => reject(new Error(`Supplier ${supplierId} timeout`)), 7000)
+                  )
+                ])
+                return { supplierId, products: supplierProducts }
+              } catch (err) {
+                console.warn(`⚠️ Failed to fetch products for supplier ${supplierId}:`, err)
+                return { supplierId, products: [] }
+              }
+            }
+            return { supplierId: 0, products: [] }
+          })
+          
+          const supplierProductsResults = await Promise.all(supplierProductPromises)
+          
+          // Tạo map: productId -> Map<supplierId, priceInfo>
+          supplierProductsResults.forEach(({ supplierId, products }) => {
+            if (Array.isArray(products)) {
+              products.forEach((sp: Record<string, unknown>) => {
+                // API trả về: { productId, productName, price, supplierLink }
+                const productId = Number(sp.productId || sp.product_id || sp.id || 0)
+                if (productId > 0) {
+                  if (!supplierProductMap.has(productId)) {
+                    supplierProductMap.set(productId, new Map())
+                  }
+                  const productMap = supplierProductMap.get(productId)!
+                  productMap.set(supplierId, {
+                    price: sp.price,
+                    supplierLink: sp.supplierLink || sp.supplier_link || '',
+                    supplierId: supplierId,
+                    productName: sp.productName || sp.name || ''
+                  })
+                  
+                  // Debug log cho supplier đầu tiên
+                  if (supplierId === 1 && supplierProductMap.size <= 3) {
+                    console.log(`🔗 Mapped: Product ${productId} -> Supplier ${supplierId}, Price: ${sp.price}`)
+                  }
+                }
+              })
+            }
+          })
+          
+          // Debug: Log một vài mappings
+          if (supplierProductMap.size > 0) {
+            const firstProductId = Array.from(supplierProductMap.keys())[0]
+            const firstProductMap = supplierProductMap.get(firstProductId)
+            console.log(`📊 Sample mapping - Product ${firstProductId}:`, 
+              firstProductMap ? Array.from(firstProductMap.entries()) : 'No mapping')
+          }
+          
+          console.log(`✅ Built mapping for ${supplierProductMap.size} products with supplier info`)
+        } catch (err) {
+          console.error('❌ Error building supplier-product mapping:', err)
+        }
+        
+        // Enrich productPrices từ mapping supplier (thay thế list theo supplier endpoint)
+        const enrichedProducts = allApiProducts.map((product: Record<string, unknown>) => {
+          const productId = Number(product.id || 0)
+          
+          if (productId > 0) {
+            const priceSupplierMap = supplierProductMap.get(productId)
+            if (priceSupplierMap && priceSupplierMap.size > 0) {
+              const rebuiltPrices = Array.from(priceSupplierMap.entries()).map(([supplierId, info]) => ({
+                id: 0,
+                price: Number(info.price || 0),
+                supplier_id: supplierId,
+                supplierId: supplierId,
+                supplierLink: info.supplierLink || '',
+                updatedAt: ''
+              }))
+              return { ...product, productPrices: rebuiltPrices }
+            }
+          }
+          return product
+        })
+        
+        // Log kết quả enrichment
+        const enrichedCount = enrichedProducts.filter(p => {
+          const prices = p.productPrices as Array<Record<string, unknown>> | undefined
+          return prices && prices.some(pp => pp.supplier_id || pp.supplierId)
+        }).length
+        
+        console.log(`✅ Enriched ${enrichedCount}/${allApiProducts.length} products with supplier info`)
+        
         // Log sample supplier data
         console.log('🏢 Sample suppliers:', Array.from(suppliers.entries()).slice(0, 3))
 
-        // Store raw API data for later use
-        setRawApiProducts(allApiProducts)
+        // Store raw API data for later use (dùng enriched products nếu có)
+        setRawApiProducts(enrichedProducts.length > 0 ? enrichedProducts : allApiProducts)
+        
+        // Cache enriched data để không cần fetch lại
+        const cacheKey2 = 'enriched_products_cache'
+        const cacheData = {
+          products: enrichedProducts.length > 0 ? enrichedProducts : allApiProducts,
+          suppliers: allSuppliers,
+          timestamp: Date.now()
+        }
+        localStorage.setItem(cacheKey2, JSON.stringify(cacheData))
+        console.log('💾 Cached enriched data for faster subsequent loads')
 
         // Process and categorize products
         const allProducts: PCComponent[] = []

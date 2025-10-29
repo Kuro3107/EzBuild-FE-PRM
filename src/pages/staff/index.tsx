@@ -158,14 +158,8 @@ function StaffPage() {
 
           <div>
             <div className="sidebar-group">Staff Management</div>
-            <Link className="nav-item" to="/staff/dashboard">Dashboard</Link>
-            <Link className="nav-item" to="/staff/orders">Order Management</Link>
-            <Link className="nav-item" to="/staff/payments">Payment Management</Link>
             <Link className="nav-item" to="/staff/products">Product Management</Link>
-            <Link className="nav-item" to="/staff/services">Service Management</Link>
-            <Link className="nav-item" to="/staff/games">Game Management</Link>
             <Link className="nav-item" to="/staff/feedbacks">Feedback Management</Link>
-            <Link className="nav-item" to="/staff/debug">Debug</Link>
           </div>
 
           <div>

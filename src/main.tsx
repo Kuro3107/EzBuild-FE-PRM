@@ -32,6 +32,7 @@ import StaffServicesPage from './pages/staff/services.tsx'
 import StaffGamesPage from './pages/staff/games.tsx'
 import StaffFeedbacksPage from './pages/staff/feedbacks.tsx'
 import AdminPage from './pages/admin/index.tsx'
+import AdminUsersPage from './pages/admin/users.tsx'
 import CustomerProfilePage from './pages/customer/index.tsx'
 import CustomerBuildsPage from './pages/customer/builds.tsx'
 import CustomerOrdersPage from './pages/customer/orders.tsx'
@@ -126,6 +127,16 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/admin" element={
             <ProtectedRoute requiredRole="Admin">
               <AdminPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/products" element={
+            <ProtectedRoute requiredRole="Admin">
+              <StaffProductsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/users" element={
+            <ProtectedRoute requiredRole="Admin">
+              <AdminUsersPage />
             </ProtectedRoute>
           } />
         </Route>
