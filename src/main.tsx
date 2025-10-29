@@ -5,7 +5,6 @@ import './index.css'
 import ProtectedRoute from './components/ProtectedRoute'
 import HomePage from './pages/homepage/index.tsx'
 import AppShell from './components/AppShell'
-import SalesPage from './pages/sales/index.tsx'
 import CasePage from './pages/products/case.tsx'
 import CPUPage from './pages/products/cpu.tsx'
 import ProductDetailPage from './pages/products/product-detail.tsx'
@@ -24,10 +23,24 @@ import RegisterPage from './pages/login&register/register.tsx'
 import ForgotPasswordPage from './pages/login&register/forgot-password.tsx'
 import ComparePage from './pages/compare/compare.tsx'
 import StaffPage from './pages/staff/index.tsx'
+import StaffDashboardPage from './pages/staff/dashboard.tsx'
+import StaffOrdersPage from './pages/staff/orders.tsx'
+import StaffPaymentsPage from './pages/staff/payments.tsx'
+import StaffDebugPage from './pages/staff/debug.tsx'
+import StaffProductsPage from './pages/staff/products.tsx'
+import StaffServicesPage from './pages/staff/services.tsx'
+import StaffGamesPage from './pages/staff/games.tsx'
+import StaffFeedbacksPage from './pages/staff/feedbacks.tsx'
 import AdminPage from './pages/admin/index.tsx'
 import CustomerProfilePage from './pages/customer/index.tsx'
+import CustomerBuildsPage from './pages/customer/builds.tsx'
+import CustomerOrdersPage from './pages/customer/orders.tsx'
 import PCBuilderPage from './pages/pcbuilder/index.tsx'
+import CheckoutPage from './pages/checkout/index.tsx'
 import OAuth2RedirectHandler from "./pages/login&register/OAuth2RedirectHandler"  
+import UserChatPage from './pages/chat/user.tsx'
+import StaffChatPage from './pages/chat/staff.tsx'
+import ProfilePage from './pages/profile/index.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -39,9 +52,10 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route element={<AppShell />}>
           <Route path="/" element={<HomePage />} />
-          <Route path="/sales" element={<SalesPage />} />
           <Route path="/compare" element={<ComparePage />} />
           <Route path="/pcbuilder" element={<PCBuilderPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/chat" element={<UserChatPage />} />
           <Route path="/products/case" element={<CasePage />} />
           <Route path="/products/cpu" element={<CPUPage />} />
           <Route path="/products/:category/:id" element={<ProductDetailPage />} />
@@ -56,9 +70,57 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/products/mouse" element={<MousePage />} />
           <Route path="/products/keyboard" element={<KeyboardPage />} />
           <Route path="/customer" element={<CustomerProfilePage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/builds" element={<CustomerBuildsPage />} />
+          <Route path="/orders" element={<CustomerOrdersPage />} />
           <Route path="/staff" element={
             <ProtectedRoute requiredRole="Staff">
               <StaffPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/dashboard" element={
+            <ProtectedRoute requiredRole="Staff">
+              <StaffDashboardPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/orders" element={
+            <ProtectedRoute requiredRole="Staff">
+              <StaffOrdersPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/payments" element={
+            <ProtectedRoute requiredRole="Staff">
+              <StaffPaymentsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/debug" element={
+            <ProtectedRoute requiredRole="Staff">
+              <StaffDebugPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/products" element={
+            <ProtectedRoute requiredRole="Staff">
+              <StaffProductsPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/services" element={
+            <ProtectedRoute requiredRole="Staff">
+              <StaffServicesPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/games" element={
+            <ProtectedRoute requiredRole="Staff">
+              <StaffGamesPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/feedbacks" element={
+            <ProtectedRoute requiredRole="Staff">
+              <StaffFeedbacksPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/staff/chat" element={
+            <ProtectedRoute requiredRole="Staff">
+              <StaffChatPage />
             </ProtectedRoute>
           } />
           <Route path="/admin" element={

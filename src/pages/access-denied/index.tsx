@@ -1,13 +1,32 @@
 import { Link } from 'react-router-dom'
 import { ApiService } from '../../services/api'
 import '../../Homepage.css'
+import { useState } from 'react'
 
 function AccessDeniedPage() {
   const currentUser = ApiService.getCurrentUser()
   const userRole = ApiService.getUserRole()
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   return (
     <div className="page bg-grid bg-radial">
+      {/* Sidebar trigger */}
+      <button
+        className="sidebar-overlay-trigger"
+        onClick={() => setIsSidebarOpen(true)}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        Menu
+      </button>
+
+      {/* Desktop drag handle */}
+      <div
+        className="sidebar-drag-handle"
+        onMouseDown={() => setIsSidebarOpen(true)}
+      >
+      </div>
       <div className="layout">
         <aside className="sidebar">
           <div className="flex items-center justify-between px-2 mb-6">
@@ -28,6 +47,40 @@ function AccessDeniedPage() {
             )}
           </div>
         </aside>
+
+        {/* Sidebar - Mobile Overlay */}
+        {isSidebarOpen && (
+          <>
+            <div className="sidebar-overlay-backdrop" onClick={() => setIsSidebarOpen(false)} />
+            <aside className={`sidebar-overlay open`}>
+              <div className="flex items-center justify-between px-2 mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="size-6 rounded-lg bg-red-600" />
+                  <span className="font-semibold">EzBuild</span>
+                </div>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="text-white/80 hover:text-white p-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div>
+                <div className="sidebar-group">Navigation</div>
+                <Link className="nav-item" to="/" onClick={() => setIsSidebarOpen(false)}>Back to Home</Link>
+                {ApiService.isStaff() && !ApiService.isAdmin() && (
+                  <Link className="nav-item" to="/staff" onClick={() => setIsSidebarOpen(false)}>Staff Panel</Link>
+                )}
+                {ApiService.isAdmin() && (
+                  <Link className="nav-item" to="/admin" onClick={() => setIsSidebarOpen(false)}>Admin Panel</Link>
+                )}
+              </div>
+            </aside>
+          </>
+        )}
 
         <main className="main">
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">

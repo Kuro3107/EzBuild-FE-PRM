@@ -1,16 +1,20 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom'
+import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { useEffect, useRef, useState } from 'react'
+import '../Homepage.css'
 import { ApiService } from '../services/api'
+import ChatBubble from './AIChatBubble'
 
 function AppShell() {
   const [isProductsOpen, setIsProductsOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<Record<string, unknown> | null>(null)
   const [isProductsMenuOpen, setIsProductsMenuOpen] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const productsBtnRef = useRef<HTMLAnchorElement | null>(null)
   const popoverRef = useRef<HTMLDivElement | null>(null)
   const userMenuRef = useRef<HTMLDivElement | null>(null)
   const navigate = useNavigate()
+  const location = useLocation()
 
   const menuItems = [
     { key: 'home', label: 'PC Builder', link: '/pcbuilder' },
@@ -28,13 +32,10 @@ function AppShell() {
       { key: 'mouse', label: 'Mouse', link: '/products/mouse' },
       { key: 'keyboard', label: 'Keyboard', link: '/products/keyboard' },
     ]},
-    { key: 'sales', label: 'Sales', link: '/sales' },
     { key: 'compare', label: 'Compare', link: '/compare' },
-    { key: 'gallery', label: 'PC Part Gallery' },
-    { key: 'builds', label: 'Completed Builds' },
-    { key: 'updates', label: 'Updates' },
-    { key: 'setup', label: 'Setup Builder' },
-    ...(ApiService.isStaff() && !ApiService.isAdmin() ? [{ key: 'staff', label: 'Staff Panel', link: '/staff' }] : []),
+    { key: 'builds', label: 'My Builds', link: '/builds' },
+    { key: 'chat', label: 'Chat', link: '/chat' },
+    ...(ApiService.isStaff() && !ApiService.isAdmin() ? [{ key: 'staff', label: 'Staff Panel', link: '/staff' }, { key: 'staffchat', label: 'Staff Chat', link: '/staff/chat' }] : []),
     ...(ApiService.isAdmin() ? [{ key: 'admin', label: 'Admin Panel', link: '/admin' }] : []),
   ]
 
@@ -101,8 +102,49 @@ function AppShell() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1e3a8a 0%, #000000 100%)', color: 'white' }}>
-      {currentUser ? (
-        <header style={{ position: 'fixed', top: 0, right: 0, zIndex: 1000, background: 'transparent', padding: '8px 16px', border: 'none', width: 'auto' }}>
+      {/** Lắng nghe sự kiện toàn cục để mở sidebar từ các trang con */}
+      {(() => {
+        // Dùng IIFE để gắn listener một lần trong render mà không ảnh hưởng layout
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        useEffect(() => {
+          const openHandler = () => setIsSidebarOpen(true)
+          const closeHandler = () => setIsSidebarOpen(false)
+          window.addEventListener('openSidebar', openHandler as EventListener)
+          window.addEventListener('closeSidebar', closeHandler as EventListener)
+          return () => {
+            window.removeEventListener('openSidebar', openHandler as EventListener)
+            window.removeEventListener('closeSidebar', closeHandler as EventListener)
+          }
+        }, [])
+        return null
+      })()}
+      {/* Sidebar trigger - luôn hiển thị */}
+      {location.pathname.startsWith('/customer') ? null : (
+        <button
+          className="sidebar-overlay-trigger"
+          onClick={() => setIsSidebarOpen(true)}
+        >
+          <img src="/logo.png" alt="EzBuild Logo" className="w-8 h-8 rounded-full" />
+        </button>
+      )}
+      {/* Main Header with Logo */}
+      <header style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1000, background: 'transparent', padding: '8px 16px', border: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* Logo Section */}
+        <Link to="/" className="flex items-center gap-3 bg-white/95 backdrop-blur-sm border border-black/10 rounded-2xl px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-200">
+          <div className="flex items-center gap-2">
+            {/* Logo Icon */}
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+              <img src="/images/wawasensei-white.png" alt="EzBuild Logo" className="w-6 h-6" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-lg font-bold text-gray-800">EzBuild</span>
+              <span className="text-xs text-gray-500 -mt-1">Build your dream</span>
+            </div>
+          </div>
+        </Link>
+
+        {/* User Section */}
+        {currentUser ? (
           <div className="relative">
             <button
               onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
@@ -132,7 +174,7 @@ function AppShell() {
                   </div>
                 </div>
                 <div className="py-2">
-                  <Link to="/customer" className="w-full px-6 py-3 text-left text-blue-400 hover:bg-gray-800 transition-colors text-sm flex items-center gap-4 group" onClick={() => setIsUserMenuOpen(false)}>
+                  <Link to="/profile" className="w-full px-6 py-3 text-left text-blue-400 hover:bg-gray-800 transition-colors text-sm flex items-center gap-4 group" onClick={() => setIsUserMenuOpen(false)}>
                     <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     <span className="font-medium">Profile</span>
                   </Link>
@@ -144,80 +186,75 @@ function AppShell() {
               </div>
             )}
           </div>
-        </header>
-      ) : (
-        <header style={{ position: 'fixed', top: 0, right: 0, zIndex: 1000, background: 'transparent', padding: '8px 16px', border: 'none', width: 'auto' }}>
+        ) : (
           <Link to="/login" className="flex items-center gap-2 bg-white/95 backdrop-blur-sm border border-black/10 rounded-2xl px-4 py-2 shadow-lg hover:shadow-xl transition-all duration-200">
             <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" /></svg>
             <span className="text-sm font-medium text-gray-800">Sign In</span>
           </Link>
-        </header>
-      )}
+        )}
+      </header>
 
       <div style={{ display: 'flex', minHeight: '100vh' }}>
-        <aside style={{ width: '256px', background: '#000000', borderRight: '1px solid #333333', position: 'fixed', height: '100vh', left: 0, top: 0, zIndex: 100, display: window.innerWidth >= 768 ? 'block' : 'none' }}>
-          <Link to="/" style={{ padding: '16px', borderBottom: '1px solid #333333', display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-            <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: '#1e3a8a' }} />
-            <span style={{ fontWeight: '600', fontSize: '16px', color: 'white' }}>EzBuild</span>
-          </Link>
-          <nav style={{ height: 'calc(100% - 80px)', paddingTop: '8px', background: '#000000', overflowY: 'auto' }}>
-            <div style={{ padding: '0 16px' }}>
-              {menuItems.map((item) => (
-                <div key={item.key}>
-                  {item.link ? (
-                    <Link to={item.link} style={{ display: 'block', padding: '12px 16px', color: 'white', textDecoration: 'none', borderRadius: '6px', marginBottom: '4px', transition: 'background-color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1e3a8a')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}>
-                      {item.label}
-                    </Link>
-                  ) : item.children ? (
-                    <div style={{ padding: '12px 16px', color: 'white', cursor: 'pointer', borderRadius: '6px', marginBottom: '4px', transition: 'background-color 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} 
-                         onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1e3a8a')} 
-                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
-                         onClick={() => setIsProductsMenuOpen(!isProductsMenuOpen)}>
-                      <span>{item.label}</span>
-                      <svg 
-                        style={{ 
-                          width: '16px', 
-                          height: '16px', 
-                          transition: 'transform 0.2s',
-                          transform: isProductsMenuOpen ? 'rotate(90deg)' : 'rotate(0deg)'
-                        }} 
-                        fill="none" 
-                        stroke="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  ) : (
-                    <div style={{ padding: '12px 16px', color: 'white', cursor: 'pointer', borderRadius: '6px', marginBottom: '4px', transition: 'background-color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1e3a8a')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}>
-                      {item.label}
-                    </div>
-                  )}
-                  {item.children && isProductsMenuOpen && (
-                    <div style={{ marginLeft: '16px', marginTop: '8px' }}>
-                      {item.children.map((child) => (
-                        <Link key={child.key} to={child.link} style={{ display: 'block', padding: '8px 16px', color: '#cccccc', textDecoration: 'none', fontSize: '14px', borderRadius: '6px', marginBottom: '2px', transition: 'background-color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#1e3a8a')} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}>
-                          {child.label}
+        {/* Sidebar overlay */}
+        {isSidebarOpen && (
+          <>
+            <div className="sidebar-overlay-backdrop" onClick={() => setIsSidebarOpen(false)} />
+            <aside className="sidebar-overlay open">
+              <Link to="/" className="flex items-center gap-2 px-4 pb-4 border-b border-white/20">
+                <img src="/logo.png" alt="EzBuild Logo" style={{ width: '24px', height: '24px', borderRadius: '50%' }} />
+                <span style={{ fontWeight: 600, fontSize: '16px', color: 'white' }}>EzBuild</span>
+                <button onClick={() => setIsSidebarOpen(false)} className="ml-auto text-white/80 hover:text-white p-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </Link>
+              <nav style={{ height: 'calc(100% - 80px)', paddingTop: '8px', background: '#000000', overflowY: 'auto' }}>
+                <div style={{ padding: '0 16px' }}>
+                  {menuItems.map((item) => (
+                    <div key={item.key}>
+                      {item.link ? (
+                        <Link to={item.link} className="nav-item" onClick={() => setIsSidebarOpen(false)}>
+                          {item.label}
                         </Link>
-                      ))}
+                      ) : item.children ? (
+                        <div className="nav-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }} onClick={() => setIsProductsMenuOpen(!isProductsMenuOpen)}>
+                          <span>{item.label}</span>
+                          <svg style={{ width: '16px', height: '16px', transition: 'transform 0.2s', transform: isProductsMenuOpen ? 'rotate(90deg)' : 'rotate(0deg)' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <div className="nav-item">{item.label}</div>
+                      )}
+                      {item.children && isProductsMenuOpen && (
+                        <div style={{ marginLeft: '16px', marginTop: '8px' }}>
+                          {item.children.map((child) => (
+                            <Link key={child.key} to={child.link} className="nav-item" onClick={() => setIsSidebarOpen(false)}>
+                              {child.label}
+                            </Link>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
-            </div>
-          </nav>
-          <div style={{ position: 'absolute', bottom: '16px', left: '16px', right: '16px', fontSize: '12px', color: '#8c8c8c' }}>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <a href="#" style={{ color: '#1e3a8a' }}>Contact</a>
-              <a href="#" style={{ color: '#1e3a8a' }}>FAQ</a>
-            </div>
-          </div>
-        </aside>
+              </nav>
+              <div style={{ position: 'absolute', bottom: '16px', left: '16px', right: '16px', fontSize: '12px', color: '#8c8c8c' }}>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <a href="#" style={{ color: '#60a5fa' }}>Contact</a>
+                  <a href="#" style={{ color: '#60a5fa' }}>FAQ</a>
+                </div>
+              </div>
+            </aside>
+          </>
+        )}
 
-        <main style={{ marginLeft: window.innerWidth >= 768 ? '256px' : '0', background: 'linear-gradient(135deg, #1e3a8a 0%, #000000 100%)', flex: 1, minHeight: '100vh', overflowX: 'hidden', width: '100%' }}>
+        <main style={{ marginLeft: 0, background: 'linear-gradient(135deg, #1e3a8a 0%, #000000 100%)', flex: 1, minHeight: '100vh', overflowX: 'hidden', width: '100%' }}>
           <Outlet />
         </main>
       </div>
+      
+      {/* Chat Bubble */}
+      <ChatBubble />
     </div>
   )
 }

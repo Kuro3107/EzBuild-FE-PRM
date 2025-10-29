@@ -155,7 +155,7 @@ function GPUPage() {
             name: String(item.name) || 'Unknown GPU',
             brand: String(item.brand) || 'Unknown',
             price: priceRange,
-            image: String(item.image_url1 || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=300&h=200&fit=crop'),
+            image: String(item.image_url1 || item.imageUrl1 || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=300&h=200&fit=crop'),
             specs: {
               // Dùng cột model làm series nếu có
               series: String(item.model || 'Unknown'),
@@ -425,7 +425,7 @@ function GPUPage() {
   }
 
   return (
-    <div className="page bg-grid bg-radial">
+    <div className="page homepage-container">
       <div className="layout">
         <main className="main">
           {/* Breadcrumb + controls */}

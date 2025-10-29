@@ -128,7 +128,7 @@ function PSUPage() {
             name: String(item.name) || 'Unknown PSU',
             brand: String(item.brand) || 'Unknown',
             price: priceRange,
-            image: String(item.image_url1 || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=300&h=200&fit=crop'),
+            image: String(item.image_url1 || item.imageUrl1 || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=300&h=200&fit=crop'),
             specs: {
               wattage: wattMatch ? `${wattMatch[1]}W` : 'Unknown',
               efficiency: effMatch ? `80+ ${effMatch[1]}` : 'Unknown',
@@ -381,7 +381,7 @@ function PSUPage() {
   }
 
   return (
-    <div className="page bg-grid bg-radial">
+    <div className="page homepage-container">
       <div className="layout">
 
         {/* Main */}

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ApiService } from '../../services/api'
+import ChatBubble from '../../components/AIChatBubble'
 import '../../Homepage.css'
 
 /**
@@ -21,19 +22,13 @@ interface UserProfile {
 }
 
 /**
- * Component trang Customer Profile
+ * Component trang Profile riêng biệt
  * Cho phép user xem và chỉnh sửa thông tin cá nhân, upload avatar
  */
-function CustomerProfilePage() {
+function ProfilePage() {
   // Lấy thông tin user hiện tại từ ApiService
   const currentUser = ApiService.getCurrentUser()
-  const headerName = String(
-    (currentUser?.fullname as string | undefined) ||
-    (currentUser?.username as string | undefined) ||
-    ((currentUser?.email as string | undefined)?.split('@')[0]) ||
-    'User'
-  )
-  const headerRole = String((currentUser?.role as string | undefined) || 'CUSTOMER')
+  const location = useLocation()
   
   // State quản lý trạng thái form và dữ liệu
   const [isEditing, setIsEditing] = useState(false)
@@ -57,60 +52,95 @@ function CustomerProfilePage() {
   const [formData, setFormData] = useState(profile)
   const fileInputRef = useRef<HTMLInputElement>(null) // Ref để tham chiếu đến input file ẩn
 
-      // Fetch user data nhanh: đổ ngay dữ liệu localStorage, sau đó cập nhật từ API /api/user/{id}
+  // Force re-render when location changes
   useEffect(() => {
-    // Removed AbortController - không cần nữa vì dùng ApiService
-    try {
-      if (!currentUser?.id && !currentUser?.userId) {
-        setError('Không tìm thấy thông tin user')
+    // Force component to re-render when navigating to this page
+    window.scrollTo(0, 0)
+  }, [location.pathname])
+
+  // Fetch user data từ backend
+  useEffect(() => {
+    let isMounted = true // Flag để tránh update state khi component unmounted
+
+    const fetchUserData = async () => {
+      // Kiểm tra nếu đã có data rồi thì không fetch lại
+      if (profile.id && profile.email) {
         setIsLoading(false)
         return
       }
 
-      // 1) Hydrate tức thì từ token/localStorage (UI hiển thị ngay)
-      const fallbackData: UserProfile = {
-        id: String(currentUser.id || currentUser.userId || ''),
-        email: String(currentUser.email || ''),
-        username: String(currentUser.username || ''),
-        fullname: String(currentUser.fullname || (currentUser.email ? String(currentUser.email).split('@')[0] : '')),
-        phone: String(currentUser.phone || ''),
-        address: String(currentUser.address || ''),
-        dob: String(currentUser.dob || ''),
-        role: String(currentUser.role || 'Customer'),
-        createdAt: String(currentUser.createdAt || currentUser.timestamp || ''),
-        avatar: '',
-        bio: ''
+      if (!currentUser?.id && !currentUser?.userId) {
+        if (isMounted) {
+          setError('Không tìm thấy thông tin user')
+          setIsLoading(false)
+        }
+        return
       }
-      setProfile(fallbackData)
-      setFormData(fallbackData)
-      setIsLoading(false)
 
-      // 2) Cập nhật nền từ API /api/user/{id}
-      const rawId = String(currentUser.id || currentUser.userId)
-      const cleanedId = (rawId.match(/\d+/)?.[0] || rawId).replace(/^0+(?=\d)/, '')
-      ApiService.getUserProfile(cleanedId).then((userData) => {
-        const transformedData: UserProfile = {
-          id: String(userData.id || fallbackData.id),
-          email: String(userData.email || fallbackData.email),
-          username: String(userData.username || fallbackData.username || ''),
-          fullname: String(userData.fullname || fallbackData.fullname),
-          phone: String(userData.phone || fallbackData.phone || ''),
-          address: String(userData.address || fallbackData.address || ''),
-          dob: String(userData.dob || fallbackData.dob || ''),
-          role: String(userData.role || fallbackData.role || 'Customer'),
-          createdAt: String(userData.createdAt || fallbackData.createdAt || ''),
+      // Ưu tiên sử dụng dữ liệu từ localStorage trước
+      if (currentUser && (currentUser.id || currentUser.userId)) {
+        const fallbackData: UserProfile = {
+          id: String(currentUser.id || currentUser.userId || ''),
+          email: String(currentUser.email || ''),
+          username: String(currentUser.username || ''),
+          fullname: String(currentUser.fullname || ''),
+          phone: String(currentUser.phone || ''),
+          address: String(currentUser.address || ''),
+          dob: String(currentUser.dob || ''),
+          role: String(currentUser.role || 'Customer'),
+          createdAt: String(currentUser.createdAt || currentUser.timestamp || ''),
           avatar: '',
           bio: ''
         }
-        setProfile(transformedData)
-        setFormData(transformedData)
-      }).catch(() => {/* giữ fallback nếu lỗi */})
-    } catch {
-      // ignore
+        
+        if (isMounted) {
+          setProfile(fallbackData)
+          setFormData(fallbackData)
+          setIsLoading(false)
+          console.log('Using data from localStorage:', fallbackData)
+        }
+        
+        // Vẫn thử fetch từ API để cập nhật dữ liệu mới nhất
+        try {
+          const userId = currentUser.id || currentUser.userId
+          const userData = await ApiService.getUserProfile(String(userId))
+          
+          if (!isMounted) return
+          
+          const transformedData: UserProfile = {
+            id: userData.id?.toString() || currentUser.id?.toString() || currentUser.userId?.toString() || '',
+            email: String(userData.email || currentUser.email || ''),
+            username: String(userData.username || currentUser.username || ''),
+            fullname: String(userData.fullname || currentUser.fullname || ''),
+            phone: String(userData.phone || currentUser.phone || ''),
+            address: String(userData.address || currentUser.address || ''),
+            dob: String(userData.dob || currentUser.dob || ''),
+            role: String(userData.role || currentUser.role || 'Customer'),
+            createdAt: String(userData.createdAt || currentUser.createdAt || currentUser.timestamp?.toString() || ''),
+            avatar: String(userData.avatar || ''),
+            bio: String(userData.bio || '')
+          }
+          
+          setProfile(transformedData)
+          setFormData(transformedData)
+          console.log('Updated with fresh data from API:', transformedData)
+        } catch (apiError) {
+          console.log('API fetch failed, keeping localStorage data:', apiError)
+          // Không cần xử lý lỗi ở đây vì đã có fallback data
+        }
+        
+        return
+      }
+
     }
-    // Chạy một lần khi mount - chỉ cần check currentUser có tồn tại
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+
+    fetchUserData()
+
+    // Cleanup function
+    return () => {
+      isMounted = false
+    }
+  }, [currentUser, profile.id, profile.email]) // Dependency array với các giá trị cần thiết
 
   /**
    * Xử lý khi user thay đổi giá trị trong form
@@ -247,49 +277,43 @@ function CustomerProfilePage() {
   }
 
   return (
-    <div className="page bg-grid-dark">
-      <div className="layout pt-16 md:pt-20">
-        {/* Header thay sidebar */}
-        <div className="relative z-0 bg-transparent px-4 md:px-6 pt-4 pb-3 w-full max-w-5xl mx-auto">
-          <div className="flex flex-col gap-2">
+    <div key="profile-page" className="page bg-grid-dark">
+      <div className="layout">
+        <aside className="sidebar profile-sidebar">
+          <div className="px-6 py-8 border-b border-gray-700">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-base font-bold">
-                {headerName.charAt(0).toUpperCase()}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold">
+                {formData.fullname.charAt(0).toUpperCase()}
               </div>
               <div>
-                <div className="font-semibold text-white text-base">{headerName}</div>
-                <div className="text-[11px] text-gray-400 uppercase tracking-wider">{headerRole}</div>
+                <div className="font-semibold text-white text-lg">Profile</div>
+                <div className="text-xs text-gray-400 uppercase tracking-wider">Personal Info</div>
               </div>
             </div>
-            <nav className="flex items-center gap-2 ml-12">
+          </div>
+          <nav className="flex-1 py-6">
+            <div className="px-6 mb-4">
               <Link className="nav-item-active" to="/profile">Profile</Link>
               <Link className="nav-item" to="/builds">My Builds</Link>
-              <Link className="nav-item" to="/orders">Orders</Link>
               <Link className="nav-item" to="/pcbuilder">PC Builder</Link>
-            </nav>
-          </div>
-        </div>
+            </div>
+          </nav>
+        </aside>
 
-        {/* Main Content */}
         <main className="main">
-          <div className="max-w-5xl mx-auto px-4 md:px-6 mt-2">
-            {/* Page Header */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between gap-4">
+          <div className="w-full px-6 md:px-8 lg:px-10 pt-2">
+            {/* Banner / Header */}
+            <div className="relative overflow-hidden rounded-2xl mb-8 border border-white/10 bg-white/5">
+              <div className="relative px-6 py-6 flex items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-white mb-2">Profile</h1>
-                  <p className="text-gray-400">Manage your personal information and account settings</p>
+                  <h1 className="text-2xl font-bold text-white mb-2">Profile Management</h1>
+                  <p className="text-gray-300 text-sm">Manage your personal information and account settings</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new Event('openSidebar'))}
-                  className="inline-flex items-center gap-2 bg-white/90 text-gray-900 px-3 py-2 rounded-lg shadow border border-black/10 hover:bg-white"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                  Menu
-                </button>
+                <div className="flex items-center gap-3">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+                    {formData.fullname.charAt(0).toUpperCase()}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -494,21 +518,24 @@ function CustomerProfilePage() {
                   </tbody>
                 </table>
               </div>
-
-              {/* Hidden file input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="hidden"
-              />
             </div>
+
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarUpload}
+              className="hidden"
+            />
           </div>
         </main>
       </div>
+      
+      {/* Chat Bubble */}
+      <ChatBubble />
     </div>
   )
 }
 
-export default CustomerProfilePage
+export default ProfilePage
