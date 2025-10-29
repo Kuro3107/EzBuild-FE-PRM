@@ -12,7 +12,7 @@ interface ChatBubbleProps {
 function ChatBubble({ className = '' }: ChatBubbleProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
-  const [isVisible, setIsVisible] = useState(true) // Luôn hiển thị
+  // Bubble luôn hiển thị, không cần state theo dõi
   const bubbleRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -21,12 +21,10 @@ function ChatBubble({ className = '' }: ChatBubbleProps) {
       const total = rooms.reduce((sum, room) => sum + room.unreadCount, 0)
       setUnreadCount(total)
       
-      // Luôn hiển thị bubble
-      setIsVisible(true)
+      // no-op
     })
 
-    // Hiển thị bubble ngay lập tức
-    setIsVisible(true)
+    // no-op
 
     return () => {
       unsubscribe()
@@ -142,7 +140,7 @@ interface ChatWindowProps {
 function ChatWindow({ onClose }: ChatWindowProps) {
   const [messages, setMessages] = useState<any[]>([])
   const [newMessage, setNewMessage] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
+  const [isTyping, _setIsTyping] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 

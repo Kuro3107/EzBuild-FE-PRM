@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { sendMessage, type ChatMessage } from '../services/geminiService';
 
 interface ChatBotProps {
@@ -10,7 +9,7 @@ interface ChatBotProps {
 const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
-      id: uuidv4(),
+      id: (globalThis.crypto?.randomUUID?.() ?? String(Date.now())),
       text: "Xin chào! Tôi là AI Assistant của EzBuild. Tôi có thể giúp bạn tư vấn về linh kiện PC, build cấu hình phù hợp, và giải đáp mọi thắc mắc về máy tính. Bạn cần hỗ trợ gì?",
       isBot: true,
       timestamp: new Date()
@@ -32,7 +31,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onClose }) => {
     if (!inputMessage.trim() || isLoading) return;
 
     const userMessage: ChatMessage = {
-      id: uuidv4(),
+      id: (globalThis.crypto?.randomUUID?.() ?? String(Date.now() + Math.random())),
       text: inputMessage.trim(),
       isBot: false,
       timestamp: new Date()
@@ -45,7 +44,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onClose }) => {
     try {
       const response = await sendMessage(inputMessage, messages);
       const botMessage: ChatMessage = {
-        id: uuidv4(),
+        id: (globalThis.crypto?.randomUUID?.() ?? String(Date.now() + Math.random())),
         text: response,
         isBot: true,
         timestamp: new Date()
@@ -53,7 +52,7 @@ const ChatBot: React.FC<ChatBotProps> = ({ isOpen, onClose }) => {
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       const errorMessage: ChatMessage = {
-        id: uuidv4(),
+        id: (globalThis.crypto?.randomUUID?.() ?? String(Date.now() + Math.random())),
         text: "Xin lỗi, tôi không thể trả lời lúc này. Vui lòng thử lại sau.",
         isBot: true,
         timestamp: new Date()
