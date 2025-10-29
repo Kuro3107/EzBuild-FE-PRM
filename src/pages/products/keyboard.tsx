@@ -120,13 +120,19 @@ function KeyboardPage() {
           
           // Debug log để kiểm tra dữ liệu
           console.log(`Keyboard: ${item.name}, productPrices:`, productPrices, 'priceRange:', priceRange)
+          console.log(`Keyboard Image Debug:`, {
+            name: item.name,
+            image_url1: item.image_url1,
+            imageUrl1: item.imageUrl1,
+            finalImage: String(item.image_url1 || item.imageUrl1 || 'fallback')
+          })
 
           return {
             id: Number(item.id) || 0,
             name: String(item.name) || 'Unknown Keyboard',
             brand: String(item.brand) || 'Unknown',
             price: priceRange,
-            image: String(item.image_url1 || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=300&h=200&fit=crop'),
+            image: String(item.image_url1 || item.imageUrl1 || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=300&h=200&fit=crop'),
             specs: {
               switchType: switchMatch ? switchMatch[0] : 'Mechanical',
               layout: layoutMatch ? layoutMatch[1] : 'Full Size',
@@ -381,7 +387,7 @@ function KeyboardPage() {
   }
 
   return (
-    <div className="page bg-grid bg-radial">
+    <div className="page homepage-container">
       <div className="layout">
         {/* Main */}
         <main className="main">

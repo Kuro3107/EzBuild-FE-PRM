@@ -1,4 +1,5 @@
-const API_BASE_URL = import.meta.env?.VITE_API_BASE_URL || 'https://prm-backend-2.onrender.com'
+// Dùng proxy của Vite trong dev: để trống khi không cấu hình env
+const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL ?? '').trim()
 
 export interface LoginRequest {
   identifier: string // email or username
@@ -152,6 +153,7 @@ export class ApiService {
   }
 
 
+
   static async login(credentials: LoginRequest): Promise<{ token: string; user?: Record<string, unknown> }> {
     console.log('=== API LOGIN DEBUG ===')
     console.log('API URL:', `${API_BASE_URL}/api/user/login`)
@@ -171,13 +173,20 @@ export class ApiService {
       throw new Error('Vui lòng nhập email, số điện thoại hoặc username hợp lệ')
     }
     
+    // Add timeout controller for login
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
+    
     const response = await fetch(`${API_BASE_URL}/api/user/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(credentials),
+      signal: controller.signal,
     })
+    
+    clearTimeout(timeoutId)
 
     console.log('Response status:', response.status)
     console.log('Response headers:', Object.fromEntries(response.headers.entries()))
@@ -338,7 +347,8 @@ export class ApiService {
       throw new Error('No authentication token found')
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/user/${userId}`, {
+    const cleanedId = (String(userId).match(/\d+/)?.[0] || String(userId)).replace(/^0+(?=\d)/, '')
+    const response = await fetch(`${API_BASE_URL}/api/user/${cleanedId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -847,6 +857,8 @@ export class ApiService {
     }
   }
 
+  
+
   // Utility functions để làm việc với token
 
   static isTokenValid(token: string): boolean {
@@ -1075,6 +1087,230 @@ export class ApiService {
     }
   }
 
+  // Builds APIs
+  static async createBuild(params: { userId: number | string; name: string; totalPrice: number; createdAt?: string; items?: Array<{ productPriceId: number; quantity?: number }> }): Promise<Record<string, unknown>> {
+    const token = localStorage.getItem('authToken')
+    // Preferred payload per Swagger DTO
+    const payload: Record<string, unknown> = {
+      userId: typeof params.userId === 'string' ? parseInt(params.userId, 10) : params.userId,
+      name: params.name,
+      totalPrice: params.totalPrice,
+      ...(params.items && params.items.length > 0 ? {
+        items: params.items.map((it) => ({
+          productPriceId: it.productPriceId,
+          quantity: it.quantity ?? 1
+        }))
+      } : {})
+    }
+
+    // Try single-POST per Swagger
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/build`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(payload)
+      })
+      if (!response.ok) throw await response.json().catch(async () => ({ message: await response.text().catch(() => 'Unknown error'), status: response.status }))
+      return await response.json()
+    } catch (err) {
+      const anyErr = err as { message?: unknown; status?: unknown }
+      const message = (anyErr?.message || '').toString()
+      const status = Number(anyErr?.status || 0)
+      const unsupported = message.includes('Content-Type') || status === 415 || message.toLowerCase().includes('not supported')
+
+      // Fallback: create build first, then create items one by one (works with current backend)
+      const fallbackResponse = await fetch(`${API_BASE_URL}/api/build`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          user: { id: typeof params.userId === 'string' ? parseInt(params.userId, 10) : params.userId },
+          name: params.name,
+          totalPrice: params.totalPrice
+        })
+      })
+
+      if (!fallbackResponse.ok) {
+        // If fallback also fails, propagate error
+        const text = await fallbackResponse.text().catch(() => '')
+        throw { message: text || message || 'Create build failed', status: fallbackResponse.status }
+      }
+
+      const build = await fallbackResponse.json()
+      const buildId = Number(build?.id)
+      if (unsupported && params.items && params.items.length > 0 && Number.isFinite(buildId)) {
+        for (const it of params.items) {
+          await this.createBuildItem({ buildId, productPriceId: it.productPriceId, quantity: it.quantity ?? 1 })
+        }
+      }
+
+      return build
+    }
+  }
+
+  static async createBuildItem(params: { buildId: number; productPriceId: number; quantity?: number }): Promise<Record<string, unknown>> {
+    const token = localStorage.getItem('authToken')
+    const payload = {
+      build: { id: params.buildId },
+      productPrice: { id: params.productPriceId },
+      quantity: params.quantity ?? 1
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/build-item`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(payload)
+    })
+
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async getBuilds(): Promise<Array<Record<string, unknown>>> {
+    const token = localStorage.getItem('authToken')
+    const response = await fetch(`${API_BASE_URL}/api/build`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    })
+    return this.handleResponse<Array<Record<string, unknown>>>(response)
+  }
+
+  static async getBuildById(buildId: number): Promise<Record<string, unknown>> {
+    const token = localStorage.getItem('authToken')
+    const response = await fetch(`${API_BASE_URL}/api/build/${buildId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    })
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async getBuildsByUser(userId: number | string): Promise<Array<Record<string, unknown>>> {
+    const all = await this.getBuilds()
+    const uid = typeof userId === 'string' ? parseInt(userId, 10) : userId
+    return all.filter((b) => {
+      const u = (b as Record<string, unknown>).user as Record<string, unknown> | undefined
+      const idVal = (u?.id as number) ?? (b as Record<string, unknown>).user_id as number | undefined
+      return Number(idVal) === Number(uid)
+    })
+  }
+
+  static async deleteBuild(id: number): Promise<void> {
+    const token = localStorage.getItem('authToken')
+    if (!token) {
+      throw new Error('No authentication token found')
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/build/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData?.message || 'Có lỗi xảy ra khi xóa build')
+    }
+  }
+
+  // Orders APIs
+  static async createOrder(params: { userId: number | string; buildId?: number; totalPrice: number; address?: string; paymentMethod?: string; status?: string; phone?: string }): Promise<Record<string, unknown>> {
+    const token = localStorage.getItem('authToken')
+    const payload: Record<string, unknown> = {
+      userId: typeof params.userId === 'string' ? parseInt(params.userId, 10) : params.userId,
+      ...(typeof params.buildId === 'number' ? { buildId: params.buildId } : {}),
+      totalPrice: params.totalPrice,
+      address: params.address || '',
+      paymentMethod: params.paymentMethod || 'COD',
+      status: params.status || 'PAID',
+      ...(params.phone ? { phone: params.phone } : {})
+    }
+
+    console.log('=== CREATE ORDER DEBUG ===')
+    console.log('Payload:', JSON.stringify(payload, null, 2))
+    console.log('Token exists:', !!token)
+
+    const response = await fetch(`${API_BASE_URL}/api/service-order`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(payload)
+    })
+
+    console.log('Response status:', response.status)
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async getOrders(): Promise<Array<Record<string, unknown>>> {
+    const token = localStorage.getItem('authToken')
+    const response = await fetch(`${API_BASE_URL}/api/service-order`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    })
+    return this.handleResponse<Array<Record<string, unknown>>>(response)
+  }
+
+  static async getOrdersByUser(userId: number | string): Promise<Array<Record<string, unknown>>> {
+    const token = localStorage.getItem('authToken')
+    const uidNum = typeof userId === 'string' ? parseInt((userId as string).replace(/[^0-9]/g, ''), 10) : userId
+    const uid = Number.isFinite(uidNum as number) ? uidNum : userId
+    const base = `${API_BASE_URL}/api/service-order`
+
+    // Try direct endpoint patterns first
+    const endpoints = [
+      `${base}/user/${uid}`,
+      `${base}?userId=${encodeURIComponent(String(uid))}`
+    ]
+
+    for (const url of endpoints) {
+      try {
+        const resp = await fetch(url, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        })
+        if (resp.ok) {
+          const data = await this.handleResponse<Array<Record<string, unknown>>>(resp)
+          return data
+        }
+      } catch {
+        // try next
+      }
+    }
+
+    // Fallback: fetch all and filter client-side
+    const all = await this.getOrders()
+    return all.filter((o) => {
+      const u = (o as Record<string, unknown>).user as Record<string, unknown> | undefined
+      const idVal = (u?.id as number) ?? (o as Record<string, unknown>).user_id as number | undefined
+      return Number(idVal) === Number(uid)
+    })
+  }
+
   // Function để clear tất cả dữ liệu authentication
   static clearAuthData(): void {
     localStorage.removeItem('authToken')
@@ -1100,6 +1336,484 @@ export class ApiService {
       }
     } else {
       console.log('No token found')
+    }
+  }
+
+  // Order Management APIs for Staff
+  static async updateOrderStatus(orderId: number, status: string): Promise<Record<string, unknown>> {
+    const token = localStorage.getItem('authToken')
+    
+    console.log('=== UPDATING ORDER STATUS ===')
+    console.log('Order ID:', orderId)
+    console.log('New Status:', status)
+
+    // Thử nhiều endpoint khác nhau
+    const attempts: Array<{ url: string; method: string; body?: BodyInit; contentType?: string }> = [
+      // 1) PUT /status text/plain (thường đơn giản nhất cho BE)
+      {
+        url: `${API_BASE_URL}/api/service-order/${orderId}`,
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+        contentType: 'application/json'
+      },
+      // 2) Alternative endpoint
+      {
+        url: `${API_BASE_URL}/api/service-order/${orderId}?status=${encodeURIComponent(status)}`,
+        method: 'PUT'
+      }
+    ]
+
+    for (const attempt of attempts) {
+      try {
+        console.log(`Trying ${attempt.method} ${attempt.url}`)
+        
+        // attempt may optionally carry contentType
+        const at: { url: string; method: string; body: BodyInit | null | undefined; contentType?: string } = attempt as unknown as { url: string; method: string; body: BodyInit | null | undefined; contentType?: string }
+
+        const initHeaders: Record<string, string> = {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+        // Chỉ set Content-Type khi explicit chỉ định, để tránh BE reject application/json
+        if (at.contentType) {
+          initHeaders['Content-Type'] = at.contentType
+        }
+
+        const response = await fetch(at.url, {
+          method: at.method,
+          headers: {
+            ...initHeaders
+          },
+          body: at.body
+        })
+
+        console.log(`${attempt.method} response status:`, response.status)
+
+        if (response.ok) {
+          console.log(`✅ Success with ${attempt.method}`)
+          const orderResult = await this.handleResponse<Record<string, unknown>>(response)
+          
+          return orderResult
+        } else if (response.status === 404 || response.status === 405) {
+          // Method/endpoint không hỗ trợ => thử attempt tiếp theo
+          continue
+        } else if (response.status === 400 || response.status === 415) {
+          // Kiểu body không phù hợp => thử attempt tiếp theo
+          continue
+        } else if (response.status >= 500) {
+          // Lỗi server tạm thời => thử attempt tiếp theo
+          continue
+        }
+      } catch (error) {
+        console.log(`${attempt.method} failed:`, error)
+        continue
+      }
+    }
+
+    // Fallback cuối: PUT full object (BE yêu cầu entity đầy đủ) - KHÔNG set Content-Type
+    try {
+      const current = await this.getOrderById(orderId)
+      const merged = { ...current, status }
+      const response = await fetch(`${API_BASE_URL}/api/service-order/${orderId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(merged)
+      })
+      if (response.ok) {
+        const orderResult = await this.handleResponse<Record<string, unknown>>(response)
+        return orderResult
+      }
+    } catch (e) {
+      console.log('PUT full entity fallback failed:', e)
+    }
+
+    throw new Error(`Không thể cập nhật trạng thái đơn hàng. Đã thử tất cả các endpoint.`)
+  }
+
+  static async getOrderById(orderId: number): Promise<Record<string, unknown>> {
+    const token = localStorage.getItem('authToken')
+    const response = await fetch(`${API_BASE_URL}/api/service-order/${orderId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      }
+    })
+
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  // Auto-update order status when payment is updated
+  // Auto-update orders to DONE after 3 days from PAID status
+  static async checkAndUpdateOrdersToDone(): Promise<void> {
+    try {
+      const orders = await this.getOrders()
+      const now = new Date()
+      const threeDaysAgo = new Date(now.getTime() - (3 * 24 * 60 * 60 * 1000))
+
+      for (const order of orders as Array<Record<string, unknown>>) {
+        // Check if order is PAID and has been PAID for more than 3 days
+        if (order.status === 'PAID' && order.updatedAt) {
+          const updatedAt = new Date(order.updatedAt as string)
+          if (updatedAt < threeDaysAgo) {
+            try {
+              await this.updateOrderStatus(order.id as number, 'DONE')
+              console.log(`Auto-updated order ${order.id} to DONE after 3 days`)
+            } catch (error) {
+              console.error(`Error auto-updating order ${order.id} to DONE:`, error)
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking and updating orders to DONE:', error)
+    }
+  }
+
+  // AI Chat API
+  static async sendAIChatMessage(message: string, chatHistory: Array<{ role: string; content: string }> = []): Promise<string> {
+    const token = localStorage.getItem('authToken')
+    const user = this.getCurrentUser()
+    
+    console.log('📤 Sending chat request to backend...')
+    console.log('Endpoint:', `${API_BASE_URL}/api/chat/send`)
+    console.log('Message:', message)
+    console.log('User:', user?.id?.toString() || 'guest')
+    console.log('Chat History:', chatHistory)
+    
+    const response = await fetch(`${API_BASE_URL}/api/chat/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify({
+        message,
+        userId: user?.id?.toString() || 'guest',
+        chatHistory: chatHistory
+      })
+    })
+
+    console.log('📥 Response status:', response.status)
+
+    const data = await this.handleResponse<{ message: string; response: string; success: boolean; error?: string }>(response)
+    
+    console.log('📥 Response data:', data)
+    
+    if (!data.success) {
+      throw new Error(data.error || 'Failed to get AI response')
+    }
+    
+    return data.response
+  }
+
+  // Services APIs
+  static async getAllServices(): Promise<Record<string, unknown>[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/service`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await this.handleResponse<Record<string, unknown>[]>(response)
+    } catch (error) {
+      console.error('Error fetching services:', error)
+      throw error
+    }
+  }
+
+  static async getServiceById(id: number): Promise<Record<string, unknown>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/service/${id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await this.handleResponse<Record<string, unknown>>(response)
+    } catch (error) {
+      console.error('Error fetching service:', error)
+      throw error
+    }
+  }
+
+  static async createService(service: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const response = await fetch(`${API_BASE_URL}/api/service`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(service),
+    })
+
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async updateService(id: number, service: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const response = await fetch(`${API_BASE_URL}/api/service/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(service),
+    })
+
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async deleteService(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/service/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData?.message || 'Có lỗi xảy ra khi xóa service')
+    }
+  }
+
+  // Supplier APIs
+  static async getAllSuppliers(): Promise<Record<string, unknown>[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/supplier`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await this.handleResponse<Record<string, unknown>[]>(response)
+    } catch (error) {
+      console.error('Error fetching suppliers:', error)
+      throw error
+    }
+  }
+
+  static async getSupplierById(id: number): Promise<Record<string, unknown>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/supplier/${id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await this.handleResponse<Record<string, unknown>>(response)
+    } catch (error) {
+      console.error('Error fetching supplier:', error)
+      throw error
+    }
+  }
+
+  static async getSupplierProducts(supplierId: number): Promise<Record<string, unknown>[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/supplier/${supplierId}/products`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await this.handleResponse<Record<string, unknown>[]>(response)
+    } catch (error) {
+      console.error('Error fetching supplier products:', error)
+      throw error
+    }
+  }
+
+  static async createSupplier(supplier: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const response = await fetch(`${API_BASE_URL}/api/supplier`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(supplier),
+    })
+
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async updateSupplier(id: number, supplier: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const response = await fetch(`${API_BASE_URL}/api/supplier/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(supplier),
+    })
+
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async deleteSupplier(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/supplier/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData?.message || 'Có lỗi xảy ra khi xóa supplier')
+    }
+  }
+
+  // Games APIs
+  static async getAllGames(): Promise<Record<string, unknown>[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/game`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await this.handleResponse<Record<string, unknown>[]>(response)
+    } catch (error) {
+      console.error('Error fetching games:', error)
+      throw error
+    }
+  }
+
+  static async getGameById(id: number): Promise<Record<string, unknown>> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/game/${id}`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await this.handleResponse<Record<string, unknown>>(response)
+    } catch (error) {
+      console.error('Error fetching game:', error)
+      throw error
+    }
+  }
+
+  static async createGame(game: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const response = await fetch(`${API_BASE_URL}/api/game`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(game),
+    })
+
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async updateGame(id: number, game: Record<string, unknown>): Promise<Record<string, unknown>> {
+    const response = await fetch(`${API_BASE_URL}/api/game/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(game),
+    })
+
+    return this.handleResponse<Record<string, unknown>>(response)
+  }
+
+  static async deleteGame(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/game/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData?.message || 'Có lỗi xảy ra khi xóa game')
+    }
+  }
+
+  // Feedbacks APIs
+  static async getAllOrderFeedbacks(): Promise<Record<string, unknown>[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/order-feedback`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await this.handleResponse<Record<string, unknown>[]>(response)
+    } catch (error) {
+      console.error('Error fetching order feedbacks:', error)
+      throw error
+    }
+  }
+
+  static async getAllServiceFeedbacks(): Promise<Record<string, unknown>[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/service-feedback`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      return await this.handleResponse<Record<string, unknown>[]>(response)
+    } catch (error) {
+      console.error('Error fetching service feedbacks:', error)
+      throw error
+    }
+  }
+
+  static async deleteOrderFeedback(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/order-feedback/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData?.message || 'Có lỗi xảy ra khi xóa feedback')
+    }
+  }
+
+  static async deleteServiceFeedback(id: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/service-feedback/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      throw new Error(errorData?.message || 'Có lỗi xảy ra khi xóa feedback')
     }
   }
 }

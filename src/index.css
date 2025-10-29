@@ -32,6 +32,47 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
+}
+
+html {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Smooth scrolling and layout fixes */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent breaking fixed-position children (chat bubble, header) */
+/* Note: removing contain to ensure position: fixed is relative to viewport */
+/* .app-shell-container { contain: layout; } */
+
+/* Fix for any potential scrollbar issues */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
 }
 
 h1 {

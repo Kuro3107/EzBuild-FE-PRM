@@ -6,6 +6,7 @@ import LandingHero from '../../components/LandingHero'
 import LandingFeatures from '../../components/LandingFeatures'
 import LandingStats from '../../components/LandingStats'
 import LandingFooter from '../../components/LandingFooter'
+import ChatBubble from '../../components/AIChatBubble'
 
 function HomePage() {
   const [isProductsOpen, setIsProductsOpen] = useState(false)
@@ -104,7 +105,7 @@ function HomePage() {
   }
 
   return (
-    <div className="page" style={{ minHeight: '100vh', color: 'white', overflowX: 'hidden' }}>
+    <div className="page homepage-container">
       {/* Header with user avatar or login button */}
       {currentUser ? (
         <header style={{ 
@@ -165,7 +166,7 @@ function HomePage() {
                 {/* Menu Items */}
                 <div className="py-2">
                   <Link 
-                    to="/customer"
+                    to="/profile"
                     className="w-full px-6 py-3 text-left text-blue-400 hover:bg-gray-800 transition-colors text-sm flex items-center gap-4 group"
                     onClick={() => setIsUserMenuOpen(false)}
                   >
@@ -174,13 +175,6 @@ function HomePage() {
                     </svg>
                     <span className="font-medium">Profile</span>
                   </Link>
-                  
-                  <button className="w-full px-6 py-3 text-left text-gray-300 hover:bg-gray-800 transition-colors text-sm flex items-center gap-4 group">
-                    <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                    <span className="font-medium">Favorites</span>
-                  </button>
                   
                   <button 
                     onClick={handleLogout}
@@ -329,6 +323,9 @@ function HomePage() {
       
       {/* Landing Footer - Outside Layout for Full Width */}
       <LandingFooter />
+      
+      {/* Chat Bubble */}
+      <ChatBubble />
     </div>
   )
 }

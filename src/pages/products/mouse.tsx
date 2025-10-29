@@ -124,7 +124,7 @@ function MousePage() {
             name: String(item.name) || 'Unknown Mouse',
             brand: String(item.brand) || 'Unknown',
             price: priceRange,
-            image: String(item.image_url1 || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=300&h=200&fit=crop'),
+            image: String(item.image_url1 || item.imageUrl1 || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=300&h=200&fit=crop'),
             specs: {
               dpi: dpiMatch ? `${dpiMatch[1]} DPI` : 'Unknown',
               sensorType: sensorMatch ? sensorMatch[1] : 'Optical',
@@ -357,7 +357,7 @@ function MousePage() {
   }
 
   return (
-    <div className="page bg-grid bg-radial">
+    <div className="page homepage-container">
       <div className="layout">
         
         {/* Main */}

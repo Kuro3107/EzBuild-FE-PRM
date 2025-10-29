@@ -3,6 +3,8 @@ import { useState } from 'react'
 import ApiService from '../../services/api'
 import './index.css'
 
+const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL ?? '').trim()
+
 function LoginPage() {
   const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
@@ -60,6 +62,7 @@ function LoginPage() {
       }
       
       console.log('Sending login data:', loginData)
+      console.log('API_BASE_URL:', API_BASE_URL)
 
       const data = await ApiService.login(loginData)
       
@@ -153,7 +156,7 @@ function LoginPage() {
           <button
   type="button"
   onClick={() => {
-    window.location.href = "https://prm-backend-2.onrender.com/oauth2/authorization/google"
+    window.location.href = "http://localhost:8080/oauth2/authorization/google"
   }}
 >
 <svg width="18" height="18" viewBox="0 0 48 48" className="-ml-1"><path fill="#EA4335" d="M24 9.5c3.54 0 6.72 1.22 9.23 3.6l6.9-6.9C35.9 2.3 30.47 0 24 0 14.62 0 6.48 5.38 2.56 13.22l8.93 6.93C13.44 14.22 18.3 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24c0-1.64-.16-3.21-.46-4.72H24v9h12.65c-.55 2.98-2.22 5.51-4.73 7.2l7.2 5.59C43.83 37.38 46.5 31.2 46.5 24z"/><path fill="#FBBC05" d="M11.49 27.15A14.5 14.5 0 0 1 10.5 24c0-1.09.12-2.15.34-3.18l-8.93-6.93A23.95 23.95 0 0 0 0 24c0 3.85.92 7.49 2.56 10.78l8.93-6.93z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.9-5.78l-7.2-5.59c-2 1.36-4.56 2.17-8.7 2.17-5.7 0-10.56-4.72-12.52-11.65l-8.93 6.93C6.48 42.62 14.62 48 24 48z"/></svg> Continue with Google
@@ -221,7 +224,7 @@ function LoginPage() {
               className="auth-submit"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Logging in…' : 'Log in'}
+              {isSubmitting ? 'Đang đăng nhập…' : 'Log in'}
             </button>
           </form>
 

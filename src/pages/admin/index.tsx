@@ -8,6 +8,8 @@ function AdminPage() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState<Record<string, unknown> | null>(null)
   const userMenuRef = useRef<HTMLDivElement>(null)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const dragDataRef = useRef<{ dragging: boolean; startX: number }>({ dragging: false, startX: 0 })
 
   // Lấy thông tin user hiện tại
   useEffect(() => {
@@ -52,6 +54,27 @@ function AdminPage() {
 
   return (
     <div className="page bg-grid bg-radial">
+      {/* Sidebar trigger */}
+      <button
+        className="sidebar-overlay-trigger"
+        onClick={() => setIsSidebarOpen(true)}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+        Menu
+      </button>
+
+      {/* Desktop drag handle */}
+      <div
+        className="sidebar-drag-handle"
+        onMouseDown={(e) => {
+          dragDataRef.current.dragging = true
+          dragDataRef.current.startX = e.clientX
+          setIsSidebarOpen(true)
+        }}
+      >
+      </div>
       {/* Header với avatar user */}
       {currentUser && (
         <header className="fixed top-0 right-0 z-50 p-2 md:p-4">
@@ -92,7 +115,7 @@ function AdminPage() {
                   </div>
                 </div>
                 <Link 
-                  to="/customer"
+                  to="/profile"
                   className="w-full px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors text-sm flex items-center gap-3"
                   onClick={() => setIsUserMenuOpen(false)}
                 >
@@ -124,7 +147,7 @@ function AdminPage() {
       )}
 
       <div className="layout">
-        {/* Sidebar */}
+        {/* Sidebar - Desktop */}
         <aside className="sidebar">
           <div className="flex items-center justify-between px-2 mb-6">
             <div className="flex items-center gap-2">
@@ -147,6 +170,43 @@ function AdminPage() {
             <Link className="nav-item" to="/products">Products</Link>
           </div>
         </aside>
+
+        {/* Sidebar - Mobile Overlay */}
+        {isSidebarOpen && (
+          <>
+            <div className="sidebar-overlay-backdrop" onClick={() => setIsSidebarOpen(false)} />
+            <aside className={`sidebar-overlay open`}>
+              <div className="flex items-center justify-between px-2 mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="size-6 rounded-lg bg-red-600" />
+                  <span className="font-semibold">Admin Panel</span>
+                </div>
+                <button
+                  onClick={() => setIsSidebarOpen(false)}
+                  className="text-white/80 hover:text-white p-2"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div>
+                <div className="sidebar-group">Admin Management</div>
+                <Link className="nav-item" to="/admin/dashboard" onClick={() => setIsSidebarOpen(false)}>Admin Dashboard</Link>
+                <Link className="nav-item" to="/admin/users" onClick={() => setIsSidebarOpen(false)}>User Management</Link>
+                <Link className="nav-item" to="/admin/ai" onClick={() => setIsSidebarOpen(false)}>AI Management</Link>
+                <Link className="nav-item" to="/admin/staff" onClick={() => setIsSidebarOpen(false)}>Staff Management</Link>
+              </div>
+
+              <div>
+                <div className="sidebar-group">Navigation</div>
+                <Link className="nav-item" to="/" onClick={() => setIsSidebarOpen(false)}>Back to Home</Link>
+                <Link className="nav-item" to="/products" onClick={() => setIsSidebarOpen(false)}>Products</Link>
+              </div>
+            </aside>
+          </>
+        )}
 
         {/* Main Content */}
         <main className="main">

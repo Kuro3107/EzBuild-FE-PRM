@@ -140,7 +140,7 @@ function CasePage() {
             name: String(item.name) || 'Unknown Case',
             brand: String(item.brand) || 'Unknown',
             price: priceRange,
-            image: String(item.image_url1 || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=300&h=200&fit=crop'),
+            image: String(item.image_url1 || item.imageUrl1 || 'https://images.unsplash.com/photo-1591799264318-7e6ef8ddb7ea?w=300&h=200&fit=crop'),
             specs: {
               formFactor: formMatch ? formMatch[0] : 'ATX Mid Tower',
               maxGPULength: gpuLenMatch ? `${gpuLenMatch[1]}mm` : 'Unknown',
@@ -435,7 +435,7 @@ function CasePage() {
   }
 
   return (
-    <div className="page bg-grid bg-radial">
+    <div className="page homepage-container">
       <div className="layout">
 
         {/* Main */}
